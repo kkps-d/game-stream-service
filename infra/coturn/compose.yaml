@@ -1,0 +1,53 @@
+name: game-stream-coturn
+
+services:
+  coturn:
+    image: coturn/coturn:4.19.2-r0
+    command:
+      - -c
+      - /etc/coturn/turnserver.conf
+      - --listening-ip=${TURN_IP:-172.30.42.2}
+      - --relay-ip=${TURN_IP:-172.30.42.2}
+    volumes:
+      - type: bind
+        source: ./local/turnserver.conf
+        target: /etc/coturn/turnserver.conf
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /var/lib/coturn
+    networks:
+      relay:
+        ipv4_address: ${TURN_IP:-172.30.42.2}
+
+  smoke-peer:
+    profiles: [smoke]
+    image: mcr.microsoft.com/playwright:v1.64.1-resolute
+    init: true
+    shm_size: 256m
+    command:
+      - node
+      - /smoke/node_modules/playwright/cli.js
+      - run-server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "3000"
+    volumes:
+      - type: bind
+        source: ./smoke/node_modules
+        target: /smoke/node_modules
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      relay:
+        ipv4_address: ${SMOKE_PEER_IP:-172.30.42.3}
+
+networks:
+  relay:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${TURN_SUBNET:-172.30.42.0/24}

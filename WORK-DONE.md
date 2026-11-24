@@ -8,3 +8,4 @@
 - Added simulated OpenArena Play and Stop, stable player profiles, and state recovery after reconnect and API restart.
 - Adopted shared shadcn forms, cards, and feedback in the player and admin panels, and enabled component previews through the frontend npm workspace.
 - Connected OpenArena Play and Stop to Docker with per-player saves, GPU selection on the runner, and recovery of live containers after runner restart.
+- Added a local coturn relay on an internal Docker bridge. Verified relay-only WebRTC between host and container Chromium, plus rejection of bad and expired credentials.

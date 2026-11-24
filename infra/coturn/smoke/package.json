@@ -1,0 +1,13 @@
+{
+  "name": "game-stream-coturn-smoke",
+  "private": true,
+  "scripts": {
+    "test": "node --env-file-if-exists=../.env --test"
+  },
+  "engines": {
+    "node": ">=24.2 <25"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}
