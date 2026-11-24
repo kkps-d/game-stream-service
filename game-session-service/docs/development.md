@@ -49,6 +49,8 @@ The player and admin panels each own a code-based TanStack route tree. `/login` 
 
 Each panel organizes its pages and supporting code by feature. The `src-shared/` tree holds components, styles, and API functions used by both panels.
 
+Set `GAME_VIEWER_DIR` to the independently built viewer directory. The API serves it at `/viewer/`, and Vite proxies that prefix so the player session and stream requests use the same origin. See the [local streaming setup](../../game-container-runner/README.md#local-streaming-network).
+
 The build creates `frontend/src/dist/` and `frontend/src-admin/dist/`, relative to this service. Serve each static bundle with an SPA fallback and a same-origin `/api` route to the backend. For HTTPS deployments, use `NODE_ENV=production`, set `APP_ORIGINS` to the public origins, and have the local reverse proxy set trusted forwarding headers. Production deployment has yet to be configured.
 
 The service manages frontend dependencies through the `frontend/` npm workspace and a single service lockfile. Run shadcn CLI commands from `frontend/`, where `components.json` lives. Use `npx shadcn@latest info --json` to check paths and `npx shadcn@latest add <component> --dry-run` to preview changes. Keep generated components on the shared `@/shared/lib/utils` import for `cn()`.

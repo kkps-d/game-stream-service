@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { isIPv4 } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { adminPort, playerPort } from '../ports.ts';
@@ -40,6 +41,9 @@ export function readConfig() {
   return {
     sessionSecret,
     agentBindAddress,
+    viewerDir: process.env.GAME_VIEWER_DIR
+      ? resolve(serviceRoot, process.env.GAME_VIEWER_DIR)
+      : undefined,
     turn: readTurnConfig(process.env.TURN_URL, process.env.TURN_SHARED_SECRET),
     runner: readRunnerConfig(),
     secureCookies: process.env.NODE_ENV === 'production',

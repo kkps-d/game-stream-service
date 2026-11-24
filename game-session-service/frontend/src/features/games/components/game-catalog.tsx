@@ -71,6 +71,17 @@ export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Prom
                 </CardContent>
               )}
               <CardFooter className="flex-wrap gap-2">
+                {instance?.streamReady && (
+                  <Button asChild>
+                    <a
+                      href={`/viewer/play/?instance=${encodeURIComponent(instance.id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open stream
+                    </a>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   aria-label={`Play ${game.title}`}

@@ -11,6 +11,7 @@ import type { RunnerRegistry } from './features/runner/services/status.ts';
 export interface AppOptions extends AuthOptions {
   origins: ReadonlySet<string>;
   turn?: TurnConfig;
+  viewerDir?: string;
 }
 
 export async function createApp(
@@ -22,6 +23,7 @@ export async function createApp(
   const app = express();
   app.disable('x-powered-by');
   if (options.secureCookies) app.set('trust proxy', 'loopback');
+  if (options.viewerDir) app.use('/viewer', express.static(options.viewerDir));
   app.get('/api/health', (_request, response) => response.json({ status: 'ok' }));
 
   app.use('/api', (request, response, next) => {

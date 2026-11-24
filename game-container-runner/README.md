@@ -21,16 +21,25 @@ Rebuild the streamer and OpenArena images from the updated web-remote-desktop ag
 ```sh
 docker build --build-context streamer=../web-remote-desktop/agent -t containerz/streamer:dev images/streamer
 docker build -t containerz/openarena:dev images/openarena
+npm --prefix ../web-remote-desktop/client ci
+npm --prefix ../web-remote-desktop/client run build -- --base /viewer/ --outDir dist/game-stream
 ```
 
 1. Start [coturn](../infra/coturn/README.md) to create the internal bridge.
-2. Set `AGENT_BIND_ADDRESS=172.30.42.1` in the session service's `.env` and start the API. If you changed the coturn subnet, use the gateway shown by `docker network inspect game-stream-coturn_relay`.
-3. Set `RUNNER_DOCKER_NETWORK=game-stream-coturn_relay` in the runner's `.env` and start the runner. Use the project's actual network name if you customized the Compose project name.
-4. Start the player panel and select **Play**. Use **Stop** before taking down the coturn stack.
+2. Set the session service's `.env` using the values below. Use the `static-auth-secret` from coturn's ignored local config for `TURN_SHARED_SECRET`.
+3. Set `RUNNER_DOCKER_NETWORK=game-stream-coturn_relay` in the runner's `.env`. Start the session API, then the runner and player panel. Restart the API and runner together when upgrading the protocol.
+4. Sign in, select **Play**, and open **Open stream** once it appears. Click the video to capture the mouse and enable sound. Use **Stop** in the player tab to end the game before taking down coturn.
 
-The runner checks the internal bridge at startup. Restart it if you recreate the bridge. Leave `RUNNER_DOCKER_NETWORK` unset to launch games with `--network none`. OpenArena's agent continues to listen on loopback inside the container.
+```dotenv
+AGENT_BIND_ADDRESS=172.30.42.1
+TURN_URL=turn:172.30.42.2:3478?transport=udp
+TURN_SHARED_SECRET=
+GAME_VIEWER_DIR=../../web-remote-desktop/client/dist/game-stream
+```
 
-When you select **Play**, the agent registers over an outbound WebSocket. The runner and API use protocol v4 and must be restarted together after updating. The API logs the registered instance ID. Stop and relaunch the game to register again after a disconnect or API restart.
+If you changed the coturn subnet or project name, use the actual bridge gateway, coturn IP, and network name. Restart the runner if you recreate the bridge. Leave `RUNNER_DOCKER_NETWORK` unset for the existing `--network none` mode.
+
+The API logs the registered instance ID. Stop and relaunch the game to register again after an agent disconnect or API restart.
 
 ## Development
 

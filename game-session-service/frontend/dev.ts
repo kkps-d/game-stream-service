@@ -17,6 +17,7 @@ const server = await createServer({
     strictPort: true,
     proxy: {
       '/api': `http://127.0.0.1:${apiPort}`,
+      '/viewer/': `http://127.0.0.1:${apiPort}`,
     },
   },
 });
