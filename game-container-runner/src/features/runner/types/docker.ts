@@ -2,6 +2,11 @@ import type { AgentLaunch, RunnerContainer } from '../../../../../protocol/runne
 
 export type GameTarget = Pick<RunnerContainer, 'id' | 'gameId' | 'profileId'>;
 
+export interface GameLaunch {
+  agent?: AgentLaunch;
+  username?: string;
+}
+
 export interface DockerGame extends GameTarget {
   dockerId: string;
   status: string;
@@ -11,7 +16,7 @@ export interface DockerGame extends GameTarget {
 
 export interface GameDocker {
   inventory(): Promise<DockerGame[]>;
-  create(game: GameTarget, agent?: AgentLaunch): Promise<string>;
+  create(game: GameTarget, launch?: GameLaunch): Promise<string>;
   start(dockerId: string): Promise<void>;
   remove(dockerId: string): Promise<void>;
   ready(dockerId: string): Promise<boolean>;

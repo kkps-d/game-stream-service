@@ -14,6 +14,8 @@ Set the same `RUNNER_ID` in both services. Set `RUNNER_GPU_PCI` to the game host
 
 A game becomes **Running** when its bundled agent responds inside the container. **Stop** removes the container and keeps its save volume. Each player and game gets a separate volume, including each Minecraft version. Restarting the runner recovers existing games from Docker. New games start with a 1920×1080 display at 60 fps. Select **High** in the viewer to stream at 1080p60.
 
+Minecraft uses the account's login username on first launch if it contains 3–16 ASCII letters, digits, or underscores. Other logins get a stable `P_` name based on the account ID. Existing saves keep their recorded offline name and UUID. The account ID still identifies the owner and keys the save volume.
+
 ## Game images
 
 Build the images you plan to run in the `containerz` checkout. The runner uses local tags.

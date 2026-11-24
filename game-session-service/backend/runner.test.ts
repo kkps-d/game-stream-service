@@ -99,7 +99,7 @@ await test(
 
     await createAccount(database.db, 'player', password, 'user');
     await createAccount(database.db, 'operator', password, 'admin');
-    await createAccount(database.db, 'other', password, 'user');
+    await createAccount(database.db, 'other.player', password, 'user');
 
     function request(path: string, init?: RequestInit) {
       return fetch(`http://127.0.0.1:${port}/api/${path}`, init);
@@ -129,13 +129,13 @@ await test(
     assert.equal((await request('health')).status, 200);
     assert.equal((await request('admin/runner')).status, 401);
     const player = await signIn('player');
-    const other = await signIn('other');
+    const other = await signIn('other.player');
     assert.equal((await request('games')).status, 401);
 
     function games(
       cookie: string,
       suffix = '',
-      action?: { instanceId?: string; profileId?: string },
+      action?: { instanceId?: string; profileId?: string; username?: string },
     ) {
       return request('games' + suffix, {
         method: action ? 'POST' : 'GET',
@@ -355,6 +355,32 @@ await test(
     const [agentCloseCode] = await agentClosed;
     assert.equal(agentCloseCode, 1000);
     assert.equal((await view('/status', { headers: owner })).status, 410);
+
+    const minecraftCatalog: RunnerSnapshot = {
+      ...snapshot,
+      games: [
+        { id: 'minecraft', title: 'Minecraft 26.3' },
+        { id: 'minecraft-1-21-11', title: 'Minecraft 1.21.11' },
+      ],
+    };
+    first.send(JSON.stringify(minecraftCatalog));
+    await waitForStatus(status, { id: 'local', online: true, snapshot: minecraftCatalog });
+    for (const [gameId, cookie, profileId, username] of [
+      ['minecraft', player, 'user-1', 'player'],
+      ['minecraft-1-21-11', other, 'user-3', 'other.player'],
+    ]) {
+      const play = once(first, 'message');
+      assert.equal(
+        (await games(cookie, `/${gameId}/play`, { profileId: 'user-2', username: 'operator' }))
+          .status,
+        202,
+      );
+      const [message] = await play;
+      const command = JSON.parse(message.toString());
+      assert.equal(command.gameId, gameId);
+      assert.equal(command.profileId, profileId);
+      assert.equal(command.username, username);
+    }
 
     const invalidClosed = once(first, 'close');
     first.send(JSON.stringify({ ...snapshot, version: 1 }));

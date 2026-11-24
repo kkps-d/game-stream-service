@@ -10,7 +10,10 @@ export function parseCommand(text: string): RunnerCommand | null {
   }
   if (typeof input !== 'object' || input === null || Array.isArray(input)) return null;
 
-  const { version, type, gameId, profileId, instanceId, agent } = input as Record<string, unknown>;
+  const { version, type, gameId, profileId, instanceId, agent, username } = input as Record<
+    string,
+    unknown
+  >;
   if (
     version !== 4 ||
     typeof gameId !== 'string' ||
@@ -23,8 +26,21 @@ export function parseCommand(text: string): RunnerCommand | null {
   if (typeof instanceId !== 'string' || !instanceId) return null;
   if (type === 'stop') return { version, type, gameId, profileId, instanceId };
   if (type !== 'play' || !/^[a-f0-9-]{36}$/.test(instanceId)) return null;
+  if (
+    username !== undefined &&
+    (typeof username !== 'string' || !/^[a-z0-9_][a-z0-9_.-]{2,31}$/.test(username))
+  )
+    return null;
 
-  if (agent === undefined) return { version, type, gameId, profileId, instanceId };
+  const play = {
+    version,
+    type,
+    gameId,
+    profileId,
+    instanceId,
+    ...(username && { username }),
+  } as const;
+  if (agent === undefined) return play;
   if (typeof agent !== 'object' || !agent) return null;
   const { url, token } = agent as Record<string, unknown>;
   if (typeof url !== 'string') return null;
@@ -46,5 +62,5 @@ export function parseCommand(text: string): RunnerCommand | null {
     !/^[a-f0-9]{64}$/.test(token)
   )
     return null;
-  return { version, type, gameId, profileId, instanceId, agent: { url: endpoint.href, token } };
+  return { ...play, agent: { url: endpoint.href, token } };
 }

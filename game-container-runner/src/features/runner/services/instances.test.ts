@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
 import { test } from 'node:test';
 import { setImmediate as idle } from 'node:timers/promises';
 import type { RunnerCommand } from '../../../../../protocol/runner.ts';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
+import { createDocker } from './docker.ts';
 import { createGameInstances } from './instances.ts';
 
 const target = { version: 4, gameId: 'openarena', profileId: 'user-1' } as const;
@@ -208,6 +212,11 @@ await test('reports launch and readiness failures and allows a fresh instance on
 
 await test('advertises the full catalog and keeps game instances separate for one player', async () => {
   const { docker, started, ready } = fakeDocker();
+  const create = docker.create;
+  docker.create = async (game, launch) => {
+    if (game.gameId === 'minecraft') assert.equal(launch?.username, 'some_player');
+    return create(game);
+  };
   const runner = createGameInstances(docker);
   await runner.reconcile();
   assert.deepEqual(runner.snapshot()!.games, [
@@ -218,7 +227,11 @@ await test('advertises the full catalog and keeps game instances separate for on
   ]);
 
   const commands = runner.snapshot()!.games.map(({ id }) => ({ ...play(), gameId: id }));
-  for (const command of commands) runner.dispatch(command);
+  for (const command of commands) {
+    runner.dispatch(
+      command.gameId === 'minecraft' ? { ...command, username: 'some_player' } : command,
+    );
+  }
   await idle();
   for (const id of started) ready.add(id);
   const recovered = createGameInstances(docker);
@@ -236,4 +249,39 @@ await test('advertises the full catalog and keeps game instances separate for on
     recovered.snapshot()!.containers.map(({ gameId }) => gameId),
     ['openarena', 'minecraft-1-21-11', 'holocure'],
   );
+});
+
+await test('uses Minecraft login names or stable fallbacks with account-keyed saves', async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), 'game-runner-docker-'));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(join(directory, 'docker'), '#!/bin/sh\nprintf "%s\\n" "$@"\n', { mode: 0o700 });
+  const path = process.env.PATH;
+  process.env.PATH = [directory, path].join(delimiter);
+  context.after(() => {
+    if (path === undefined) delete process.env.PATH;
+    else process.env.PATH = path;
+  });
+
+  const docker = createDocker('local', [], 'none');
+  for (const [gameId, profileId, username, expected] of [
+    ['minecraft', 'user-36', 'p_10', 'p_10'],
+    ['minecraft', 'user-36', 'some.player', 'P_10'],
+    ['minecraft', 'user-37', 'some-player', 'P_11'],
+    ['minecraft-1-21-11', 'user-36', 'a'.repeat(17), 'P_10'],
+    ['minecraft-1-21-11', 'user-36', undefined, 'P_10'],
+    ['openarena', 'user-36', 'some_player', undefined],
+  ] as const) {
+    const args = (await docker.create({ id: randomUUID(), gameId, profileId }, { username })).split(
+      '\n',
+    );
+    assert.equal(
+      args.find((arg) => arg.startsWith('MINECRAFT_OFFLINE_NAME=')),
+      expected && `MINECRAFT_OFFLINE_NAME=${expected}`,
+    );
+    assert(
+      args.some((arg) =>
+        arg.startsWith(`type=volume,src=game-stream-local-${profileId}-${gameId}-saves,`),
+      ),
+    );
+  }
 });

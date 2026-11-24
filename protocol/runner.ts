@@ -26,7 +26,7 @@ interface RunnerCommandTarget {
 }
 
 export type RunnerCommand = RunnerCommandTarget &
-  ({ type: 'play'; agent?: AgentLaunch } | { type: 'stop' });
+  ({ type: 'play'; agent?: AgentLaunch; username?: string } | { type: 'stop' });
 
 export interface RunnerSnapshot {
   version: 4;

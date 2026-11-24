@@ -35,7 +35,10 @@ export function createGamesRouter(
     async (request, response) => {
       respond(
         response,
-        await games.send(request.user!.id, request.params.gameId, { type: 'play' }),
+        await games.send(request.user!.id, request.params.gameId, {
+          type: 'play',
+          username: request.user!.username,
+        }),
       );
     },
   );

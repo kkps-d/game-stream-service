@@ -82,6 +82,9 @@ export function createGamesService(
         profileId,
         gameId,
         instanceId,
+        ...((gameId === 'minecraft' || gameId === 'minecraft-1-21-11') && {
+          username: action.username,
+        }),
         ...(agent && { agent }),
       });
       if (!sent) registrations?.revoke(instanceId);

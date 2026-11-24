@@ -134,18 +134,23 @@ await test('requires a secure WebSocket URL outside loopback', () => {
 await test('accepts public WSS and private IPv4 WS for agent commands', () => {
   const instanceId = '0b2b2c00-ec49-4f1e-b048-23ee20c50cae';
   const path = `/api/agents/connect/${instanceId}`;
-  const command = (url: string) =>
+  const command = (url: string, username?: unknown) =>
     parseCommand(
       JSON.stringify({
         version: 4,
         type: 'play',
-        gameId: 'openarena',
+        gameId: 'minecraft',
         profileId: 'user-1',
         instanceId,
+        username,
         agent: { url, token: 'a'.repeat(64) },
       }),
     );
-  assert.equal(command('wss://games.example' + path)?.type, 'play');
+  const parsed = command('wss://games.example' + path, 'some.player');
+  assert.equal(parsed?.type, 'play');
+  assert.equal(parsed.username, 'some.player');
+  assert.equal(command('wss://games.example' + path, ['player']), null);
+  assert.equal(command('wss://games.example' + path, 'player\n'), null);
   assert.equal(command('ws://172.30.42.1:3100' + path)?.type, 'play');
   assert.equal(command('ws://games.example' + path), null);
   assert.equal(command('wss://games.example' + path + '?'), null);

@@ -140,8 +140,13 @@ export function createDocker(
 
       const gameArgs: string[] = [];
       if (profile.offlineName) {
-        const playerName = BigInt(game.profileId.slice('user-'.length)).toString(36);
-        gameArgs.push('--env', `MINECRAFT_OFFLINE_NAME=P_${playerName}`);
+        const username = launch?.username;
+        // Account logins are lowercase. The uppercase prefix keeps the ID-based fallback distinct.
+        const playerName =
+          username && /^[a-z0-9_]{3,16}$/.test(username)
+            ? username
+            : `P_${BigInt(game.profileId.slice('user-'.length)).toString(36)}`;
+        gameArgs.push('--env', `MINECRAFT_OFFLINE_NAME=${playerName}`);
       }
       if (profile.gameFilesPath) {
         if (!holocureGameDir)
@@ -158,7 +163,7 @@ export function createDocker(
       }
 
       const containerName = name(game);
-      const agent = network === 'none' ? undefined : launch;
+      const agent = network === 'none' ? undefined : launch?.agent;
       if (vps) {
         const endpoint = agent && new URL(agent.url);
         if (!endpoint || endpoint.origin !== vps.origin) {

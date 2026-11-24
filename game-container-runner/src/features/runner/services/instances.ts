@@ -1,11 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
-import type {
-  AgentLaunch,
-  RunnerCommand,
-  RunnerContainer,
-} from '../../../../../protocol/runner.ts';
-import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
+import type { RunnerCommand, RunnerContainer } from '../../../../../protocol/runner.ts';
+import type { DockerGame, GameDocker, GameLaunch, GameTarget } from '../types/docker.ts';
 import { gameProfiles } from './games.ts';
 import { createSnapshot } from './snapshot.ts';
 
@@ -57,7 +53,7 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
     publish();
   }
 
-  async function start(key: string, entry: Entry, agent?: AgentLaunch) {
+  async function start(key: string, entry: Entry, launch: GameLaunch) {
     const title = gameProfiles.get(entry.view.gameId)?.title ?? 'The game';
     const isStopping = () => entry.view.state === 'stopping';
     try {
@@ -66,7 +62,7 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
         entry.dockerId = undefined;
       }
       if (!isStopping()) {
-        entry.dockerId = await docker.create(entry.view, agent);
+        entry.dockerId = await docker.create(entry.view, launch);
         if (!isStopping()) await docker.start(entry.dockerId);
       }
     } catch (error) {
@@ -208,7 +204,7 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
         };
         entries.set(key, entry);
         publish();
-        void start(key, entry, command.agent);
+        void start(key, entry, command);
         return;
       }
 
