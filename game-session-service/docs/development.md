@@ -41,7 +41,7 @@ The service derives the runner profile from the signed-in account ID. Play and S
 
 ## Game stream API
 
-Set `TURN_URL` and `TURN_SHARED_SECRET` from the local coturn setup. The service issues separate ten-minute credentials for each WebRTC peer. Under `/api/games/instances/:instanceId/stream`, the owner can fetch `GET /ice`, exchange SDP with `POST /offer`, and use the returned session URL for stream settings, stats, and viewer teardown. These requests require a running instance with a registered agent.
+Set `TURN_URL` and `TURN_SHARED_SECRET` from the local coturn setup. The service issues separate ten-minute credentials for each WebRTC peer. Under `/api/games/instances/:instanceId/stream`, the owner can fetch `GET /ice`, exchange SDP with `POST /offer`, check `GET /status` for stream availability, and use the returned session URL for stream settings, stats, and viewer teardown. These requests require a running instance with a registered agent.
 
 ## Frontend
 

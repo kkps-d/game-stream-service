@@ -52,6 +52,11 @@ export function createStreamsRouter(
         return;
       }
 
+      if (instance.state === 'stopping' || instance.state === 'failed') {
+        response.status(410).json({ error: 'The game has ended.' });
+        return;
+      }
+
       const agent = registrations?.connection(instanceId, profileId, instance.gameId);
       if (!turn || instance.state !== 'running' || !agent) {
         response.status(503).json({ error: 'The game stream is not ready.' });
@@ -63,6 +68,10 @@ export function createStreamsRouter(
     },
     stream,
   );
+
+  stream.get('/status', (_request, response) => {
+    response.sendStatus(204);
+  });
 
   stream.get('/ice', (_request, response) => {
     response.json({ iceServers: [turnCredentials(turn!)] });

@@ -266,6 +266,8 @@ await test(
       404,
     );
 
+    assert.equal((await view('/status', { headers: outsider })).status, 404);
+    assert.equal((await view('/status', { headers: owner })).status, 204);
     const ice = await view('/ice', { headers: owner });
     assert.equal(ice.status, 200);
     const {
@@ -352,6 +354,7 @@ await test(
     );
     const [agentCloseCode] = await agentClosed;
     assert.equal(agentCloseCode, 1000);
+    assert.equal((await view('/status', { headers: owner })).status, 410);
 
     const invalidClosed = once(first, 'close');
     first.send(JSON.stringify({ ...snapshot, version: 1 }));
