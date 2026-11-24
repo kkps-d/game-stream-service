@@ -10,7 +10,4 @@
 
 ## Internet testing
 
-- [ ] Deploy the [VPS stack](infra/vps/README.md) and verify HTTPS and WSS on its public hostname.
-- [ ] Apply the dedicated game bridge policy on the game host and verify outbound connectivity to the VPS.
-- [ ] Configure VPS coturn with a reachable public relay address and open its listener and UDP relay port range.
-- [ ] Verify OpenArena playback, audio, input, reconnect, and Stop from a browser on a separate network.
+- [ ] Complete the OpenArena audio, input, reconnect, and Stop checks against the public deployment. Use a browser off the VPS to leave its memory available for the session service and coturn.
