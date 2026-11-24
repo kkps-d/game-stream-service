@@ -28,7 +28,13 @@ function fakeDocker() {
     async create(game) {
       created.push(game);
       const dockerId = 'docker-' + game.id;
-      containers.set(dockerId, { ...game, dockerId, status: 'created', startedAt: NaN });
+      containers.set(dockerId, {
+        ...game,
+        dockerId,
+        status: 'created',
+        exitCode: 0,
+        startedAt: NaN,
+      });
       return dockerId;
     },
     async start(dockerId) {
@@ -123,13 +129,45 @@ await test('recovers live containers after restart and tracks Docker outages, ex
   await recovered.reconcile();
   assert.equal(recovered.snapshot(), null);
   docker.inventory = inventory;
-  containers.get(started[0])!.status = 'exited';
+  const crashed = containers.get(started[0])!;
+  crashed.status = 'exited';
+  crashed.exitCode = 1;
   await recovered.reconcile();
   assert.equal(recovered.snapshot()!.containers[0].state, 'failed');
   assert(recovered.snapshot()!.containers[0].error);
   containers.delete(started[0]);
   await recovered.reconcile();
   assert.deepEqual(recovered.snapshot()!.containers, []);
+});
+
+await test('cleans up a normal exit and permits a new launch', async () => {
+  const { docker, containers, started, ready, removed } = fakeDocker();
+  const runner = createGameInstances(docker);
+  await runner.reconcile();
+  const launch = play();
+  runner.dispatch(launch);
+  await idle();
+  const first = started[0];
+  ready.add(first);
+  await runner.reconcile();
+  assert.equal(runner.snapshot()!.containers[0].state, 'running');
+
+  containers.get(first)!.status = 'exited';
+  await runner.reconcile();
+  assert.deepEqual(runner.snapshot()!.containers, []);
+  assert.deepEqual(removed, [first]);
+
+  const replay = play();
+  runner.dispatch(replay);
+  await idle();
+  assert.equal(runner.snapshot()!.containers[0].id, replay.instanceId);
+  const second = started[1];
+  containers.get(second)!.status = 'exited';
+
+  const recovered = createGameInstances(docker);
+  await recovered.reconcile();
+  assert.deepEqual(recovered.snapshot()!.containers, []);
+  assert.deepEqual(removed, [first, second]);
 });
 
 await test('reports launch and readiness failures and allows a fresh instance on retry', async (context) => {

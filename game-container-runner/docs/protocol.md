@@ -11,3 +11,5 @@ The runner is online once a snapshot is accepted. Disconnecting clears the snaps
 Docker labels identify the runner, player profile, game, and instance. The runner recovers live instances by inspecting its own containers, then publishes the recovered snapshot. Readiness uses the bundled agent on the container’s loopback address and times out after 20 seconds. If Docker is unavailable, the runner disconnects until it can read the inventory again.
 
 Duplicate Play uses the current instance. A retry after failure creates a new instance with the same save volume. Stop cancels a pending launch or removes the identified container and leaves its volume available for the next Play.
+
+A normal in-game quit returns the game to idle and removes its container while preserving the save volume. A crash reports a failed instance.

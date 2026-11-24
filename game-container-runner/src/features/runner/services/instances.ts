@@ -80,6 +80,11 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
   }
 
   async function observe(game: DockerGame, current?: Entry): Promise<Entry> {
+    const { id, profileId, gameId, dockerId, startedAt } = game;
+    if (game.status === 'exited' && game.exitCode === 0) {
+      return { view: { id, profileId, gameId, state: 'stopping' }, dockerId, busy: true };
+    }
+
     const previous = current?.view.id === game.id ? current : undefined;
     if (previous?.dockerId === game.dockerId) {
       if (previous.view.state === 'running' && game.status === 'running') return previous;
@@ -91,7 +96,6 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
       }
     }
 
-    const { id, profileId, gameId, dockerId, startedAt } = game;
     const next: Entry = {
       view: { id, profileId, gameId, state: 'starting' },
       dockerId,
@@ -139,6 +143,15 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
       available = true;
       inventoryError = false;
       if (!isDeepStrictEqual(previous, snapshot())) publish();
+
+      // Cleanup starts after the entries are reserved, so Play and Stop cannot race it.
+      await Promise.all(
+        found.map(async (observed) => {
+          if (!observed) return;
+          const [key, entry] = observed;
+          if (entry.view.state === 'stopping') await stop(key, entry, false);
+        }),
+      );
     } catch (error) {
       if (!inventoryError) console.error('Could not query the OpenArena containers.', error);
       inventoryError = true;

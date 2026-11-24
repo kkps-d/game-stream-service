@@ -14,3 +14,4 @@
 - Added owner-only stream signaling and short-lived TURN credentials. The registered agent uses relay-only ICE for game streams.
 - Integrated the standalone viewer into the player panel. Verified 720p OpenArena video, non-silent audio, and keyboard and mouse control over TURN, denial for a second account, and viewer teardown on Stop.
 - Restored local Firefox streaming by adding a host-only return route inside coturn. Verified initial playback and reconnection in Firefox.
+- Made a clean OpenArena quit return to Idle and preserve saves. Verified real in-game Quit, relaunch, and a failed container exit in Firefox.

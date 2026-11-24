@@ -5,6 +5,7 @@ export type GameTarget = Pick<RunnerContainer, 'id' | 'gameId' | 'profileId'>;
 export interface DockerGame extends GameTarget {
   dockerId: string;
   status: string;
+  exitCode: number;
   startedAt: number;
 }
 

@@ -14,7 +14,7 @@ interface ContainerInfo {
   Id: string;
   Name: string;
   Config: { Labels: Record<string, string> | null };
-  State: { Status: string; StartedAt: string; Running: boolean };
+  State: { Status: string; ExitCode: number; StartedAt: string; Running: boolean };
 }
 
 async function docker(args: string[], timeout = 10_000, env?: NodeJS.ProcessEnv) {
@@ -89,6 +89,7 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
       profileId,
       dockerId: container.Id,
       status: container.State.Status,
+      exitCode: container.State.ExitCode,
       startedAt: Date.parse(container.State.StartedAt),
     };
   }
