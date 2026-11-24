@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { PlayerCatalog } from '../../../../../../protocol/games.ts';
+import type { PlayerCatalog, PlayerGame } from '../../../../../../protocol/games.ts';
 import { GameApiError, getPlayerCatalog, sendPlayerAction, type PlayerAction } from './game-api';
 
 interface PendingCommand {
   gameId: string;
   action: PlayerAction;
+  previous: PlayerGame['instance'];
 }
 
 interface CommandState {
@@ -16,8 +17,14 @@ function confirmed(catalog: PlayerCatalog, command: PendingCommand) {
   if (!catalog.runnerOnline) return false;
   const game = catalog.games.find(({ id }) => id === command.gameId);
   if (!game) return false;
-  if (command.action.type === 'play') return game.instance !== null;
-  return game.instance?.id !== command.action.instanceId || game.instance.state === 'stopping';
+  const instance = game.instance;
+  if (command.action.type === 'play')
+    return instance !== null && instance.id !== command.previous?.id;
+  return (
+    instance?.id !== command.action.instanceId ||
+    instance.state === 'stopping' ||
+    (Boolean(instance.error) && instance.error !== command.previous?.error)
+  );
 }
 
 export function useGameCatalog(onSessionExpired: () => Promise<void>) {
@@ -70,11 +77,11 @@ export function useGameCatalog(onSessionExpired: () => Promise<void>) {
     return () => clearTimeout(timer);
   }, [pending]);
 
-  async function send(gameId: string, action: PlayerAction) {
-    const operation = { gameId, action };
+  async function send(game: PlayerGame, action: PlayerAction) {
+    const operation = { gameId: game.id, action, previous: game.instance };
     setCommand({ pending: operation, error: null });
     try {
-      await sendPlayerAction(gameId, action);
+      await sendPlayerAction(game.id, action);
     } catch (error) {
       if (error instanceof GameApiError && error.status === 401) {
         await onSessionExpired();

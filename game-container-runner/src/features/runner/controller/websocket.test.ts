@@ -116,8 +116,11 @@ await test('stops retrying after an authorization failure', { timeout: 3_000 }, 
 
 await test('requires a secure WebSocket URL outside loopback', () => {
   assert.equal(
-    readConfig({ RUNNER_WS_URL: 'wss://games.example/api/runners/connect', RUNNER_TOKEN: token })
-      .url.protocol,
+    readConfig({
+      RUNNER_WS_URL: 'wss://games.example/api/runners/connect',
+      RUNNER_TOKEN: token,
+      RUNNER_GPU_PCI: '0000:01:00.0',
+    }).url.protocol,
     'wss:',
   );
   assert.throws(

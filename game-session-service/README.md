@@ -33,7 +33,7 @@ Run `npm run build` to type-check and build both panels, `npm test` for API test
 ## Features and known issues
 
 - Username/password sign-in, Drizzle-backed SQLite sessions, and server-side admin access checks.
-- The player panel supports simulated OpenArena Play and Stop with the [game container runner](../game-container-runner/README.md). Docker launch and streaming are tracked in [WORK.md](../WORK.md).
+- The player panel supports Docker-backed OpenArena Play and Stop with the [game container runner](../game-container-runner/README.md). Browser streaming is tracked in [WORK.md](../WORK.md).
 - Account creation is an operator command.
 
 ## Layout

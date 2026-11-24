@@ -3,5 +3,5 @@ import type { RunnerContainer, RunnerSnapshot } from '../../../../../protocol/ru
 export const catalog = [{ id: 'openarena', title: 'OpenArena' }];
 
 export function createSnapshot(containers: RunnerContainer[] = []): RunnerSnapshot {
-  return { version: 2, type: 'snapshot', games: catalog, containers };
+  return { version: 3, type: 'snapshot', games: catalog, containers };
 }

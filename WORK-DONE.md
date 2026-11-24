@@ -6,3 +6,4 @@
 - Refactored the game session service around auth features, initialized SQLite through Drizzle, and added dedicated player and admin login routes.
 - Scaffolded the game container runner and connected it to the session service over an authenticated WebSocket. Verified catalog snapshots and reconnects on loopback.
 - Added simulated OpenArena Play and Stop, stable player profiles, and state recovery after reconnect and API restart.
+- Connected OpenArena Play and Stop to Docker with per-player saves, GPU selection on the runner, and recovery of live containers after runner restart.

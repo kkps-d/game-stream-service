@@ -11,7 +11,7 @@ export function parseCommand(text: string): RunnerCommand | null {
 
   const { version, type, gameId, profileId, instanceId } = input as Record<string, unknown>;
   if (
-    version !== 2 ||
+    version !== 3 ||
     typeof gameId !== 'string' ||
     !gameId ||
     typeof profileId !== 'string' ||

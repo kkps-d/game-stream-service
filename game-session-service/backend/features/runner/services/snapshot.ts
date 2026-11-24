@@ -23,7 +23,11 @@ function isContainer(value: unknown): value is RunnerContainer {
     isNonEmptyString(value.gameId) &&
     typeof value.profileId === 'string' &&
     /^user-[1-9][0-9]*$/.test(value.profileId) &&
-    (value.state === 'starting' || value.state === 'running' || value.state === 'stopping')
+    (value.state === 'starting' ||
+      value.state === 'running' ||
+      value.state === 'stopping' ||
+      value.state === 'failed') &&
+    (value.error === undefined || (isNonEmptyString(value.error) && value.error.length <= 120))
   );
 }
 
@@ -37,7 +41,7 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
 
   if (
     !isRecord(value) ||
-    value.version !== 2 ||
+    value.version !== 3 ||
     value.type !== 'snapshot' ||
     !Array.isArray(value.games) ||
     !value.games.every(isGame) ||
@@ -48,11 +52,12 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
   }
 
   const games = value.games.map(({ id, title }) => ({ id, title }));
-  const containers = value.containers.map(({ id, gameId, profileId, state }) => ({
+  const containers = value.containers.map(({ id, gameId, profileId, state, error }) => ({
     id,
     gameId,
     profileId,
     state,
+    ...(error && { error }),
   }));
   const gameIds = new Set(games.map(({ id }) => id));
   if (
@@ -65,5 +70,5 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
     return null;
   }
 
-  return { version: 2, type: 'snapshot', games, containers };
+  return { version: 3, type: 'snapshot', games, containers };
 }

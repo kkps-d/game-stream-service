@@ -17,7 +17,13 @@ export function createGamesService(runners: RunnerRegistry) {
           );
           return {
             ...game,
-            instance: instance ? { id: instance.id, state: instance.state } : null,
+            instance: instance
+              ? {
+                  id: instance.id,
+                  state: instance.state,
+                  ...(instance.error && { error: instance.error }),
+                }
+              : null,
           };
         }),
       };
@@ -41,7 +47,7 @@ export function createGamesService(runners: RunnerRegistry) {
         return 'not-found';
       }
 
-      const sent = await runners.send({ version: 2, profileId, gameId, ...action });
+      const sent = await runners.send({ version: 3, profileId, gameId, ...action });
       return sent ? 'accepted' : 'unavailable';
     },
   };

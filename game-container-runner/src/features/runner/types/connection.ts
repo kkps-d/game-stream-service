@@ -9,7 +9,7 @@ export interface RunnerConfig {
 }
 
 export interface RunnerControl {
-  snapshot(): RunnerSnapshot;
+  snapshot(): RunnerSnapshot | null;
   subscribe(listener: () => void): () => void;
   dispatch(command: RunnerCommand): void;
 }

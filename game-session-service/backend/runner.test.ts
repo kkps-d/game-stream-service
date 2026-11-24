@@ -21,7 +21,7 @@ const origin = 'http://localhost:5180';
 const token = 'runner-test-token-with-enough-characters';
 const password = 'test-account-password';
 const snapshot: RunnerSnapshot = {
-  version: 2,
+  version: 3,
   type: 'snapshot',
   games: [{ id: 'openarena', title: 'OpenArena' }],
   containers: [],
@@ -166,7 +166,7 @@ await test(
     assert.equal((await games(player, '/openarena/play', { profileId: 'user-3' })).status, 202);
     const [playMessage] = await playCommand;
     assert.deepEqual(JSON.parse(playMessage.toString()), {
-      version: 2,
+      version: 3,
       type: 'play',
       profileId: 'user-1',
       gameId: 'openarena',
@@ -207,7 +207,7 @@ await test(
     );
     const [stopMessage] = await stopCommand;
     assert.deepEqual(JSON.parse(stopMessage.toString()), {
-      version: 2,
+      version: 3,
       type: 'stop',
       profileId: 'user-1',
       gameId: 'openarena',

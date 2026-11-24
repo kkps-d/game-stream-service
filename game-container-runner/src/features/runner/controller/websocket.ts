@@ -37,7 +37,12 @@ export function connectRunner(
     });
     function sendSnapshot() {
       if (socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify(controls.snapshot()), (error) => {
+      const snapshot = controls.snapshot();
+      if (!snapshot) {
+        disconnect();
+        return;
+      }
+      socket.send(JSON.stringify(snapshot), (error) => {
         if (error) {
           disconnect();
           return;

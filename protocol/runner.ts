@@ -3,17 +3,18 @@ export interface RunnerGame {
   title: string;
 }
 
-export type RunnerContainerState = 'starting' | 'running' | 'stopping';
+export type RunnerContainerState = 'starting' | 'running' | 'stopping' | 'failed';
 
 export interface RunnerContainer {
   id: string;
   gameId: string;
   profileId: string;
   state: RunnerContainerState;
+  error?: string;
 }
 
 interface RunnerCommandTarget {
-  version: 2;
+  version: 3;
   profileId: string;
   gameId: string;
 }
@@ -22,7 +23,7 @@ export type RunnerCommand = RunnerCommandTarget &
   ({ type: 'play' } | { type: 'stop'; instanceId: string });
 
 export interface RunnerSnapshot {
-  version: 2;
+  version: 3;
   type: 'snapshot';
   games: RunnerGame[];
   containers: RunnerContainer[];

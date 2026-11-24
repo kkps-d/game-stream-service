@@ -1,6 +1,8 @@
 import type { RunnerConfig } from '../types/connection.ts';
 
-export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig {
+export function readConfig(
+  env: NodeJS.ProcessEnv,
+): RunnerConfig & { runnerId: string; gpuPci: string } {
   const url = URL.parse(env.RUNNER_WS_URL ?? '');
   const loopback = url && ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
   if (
@@ -18,5 +20,11 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig {
   if (!token || !/^[a-zA-Z0-9._~-]{32,}$/.test(token)) {
     throw new Error('Set RUNNER_TOKEN to the token configured on the session service.');
   }
-  return { url, token };
+  const runnerId = env.RUNNER_ID || 'local';
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(runnerId)) throw new Error('Set a valid RUNNER_ID.');
+  const gpuPci = env.RUNNER_GPU_PCI?.trim().toLowerCase();
+  if (!gpuPci || !/^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$/.test(gpuPci)) {
+    throw new Error('Set RUNNER_GPU_PCI to the game host GPU’s PCI address.');
+  }
+  return { url, token, runnerId, gpuPci };
 }

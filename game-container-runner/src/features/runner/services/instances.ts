@@ -1,27 +1,167 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { isDeepStrictEqual } from 'node:util';
 import type { RunnerCommand, RunnerContainer } from '../../../../../protocol/runner.ts';
-import type { RunnerControl } from '../types/connection.ts';
+import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
 import { catalog, createSnapshot } from './snapshot.ts';
 
-interface Instance {
-  container: RunnerContainer;
-  transition: NodeJS.Timeout;
+interface Entry {
+  view: RunnerContainer;
+  dockerId?: string;
+  busy: boolean;
+  readyBy?: number;
 }
 
-export function createGameInstances(transitionMs = 1_500): RunnerControl {
-  const instances = new Map<string, Instance>();
+const keyFor = ({ profileId, gameId }: Pick<GameTarget, 'profileId' | 'gameId'>) =>
+  JSON.stringify([profileId, gameId]);
+
+export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
+  let entries = new Map<string, Entry>();
   const listeners = new Set<() => void>();
+  let available = false;
+  let inventoryError = false;
+  let revision = 0;
+
+  function snapshot() {
+    if (!available) return null;
+    return createSnapshot(Array.from(entries.values(), ({ view }) => ({ ...view })));
+  }
 
   function publish() {
+    revision += 1;
     for (const listener of listeners) listener();
   }
 
+  function failed(entry: Entry, error: string) {
+    entry.view = { ...entry.view, state: 'failed', error };
+  }
+
+  async function stop(key: string, entry: Entry, wasRunning: boolean) {
+    try {
+      if (entry.dockerId) await docker.remove(entry.dockerId);
+      entries.delete(key);
+    } catch (error) {
+      console.error('Could not stop OpenArena.', error);
+      entry.view = {
+        ...entry.view,
+        state: wasRunning ? 'running' : 'failed',
+        error: 'OpenArena could not be stopped. Try Stop again.',
+      };
+      entry.busy = false;
+    }
+    publish();
+  }
+
+  async function start(key: string, entry: Entry) {
+    const isStopping = () => entry.view.state === 'stopping';
+    try {
+      if (entry.dockerId) {
+        await docker.remove(entry.dockerId);
+        entry.dockerId = undefined;
+      }
+      if (!isStopping()) {
+        entry.dockerId = await docker.create(entry.view);
+        if (!isStopping()) await docker.start(entry.dockerId);
+      }
+    } catch (error) {
+      console.error('Could not start OpenArena.', error);
+      if (!isStopping()) failed(entry, 'OpenArena could not start. Try Play again.');
+    }
+
+    if (isStopping()) {
+      await stop(key, entry, false);
+      return;
+    }
+    entry.busy = false;
+    publish();
+  }
+
+  async function observe(game: DockerGame, current?: Entry): Promise<Entry> {
+    const previous = current?.view.id === game.id ? current : undefined;
+    if (previous?.dockerId === game.dockerId) {
+      if (previous.view.state === 'running' && game.status === 'running') return previous;
+      if (
+        previous.view.state === 'failed' &&
+        (game.status !== 'running' || previous.readyBy !== undefined)
+      ) {
+        return previous;
+      }
+    }
+
+    const { id, profileId, gameId, dockerId, startedAt } = game;
+    const next: Entry = {
+      view: { id, profileId, gameId, state: 'starting' },
+      dockerId,
+      busy: false,
+    };
+    if (game.status !== 'running') {
+      failed(next, 'OpenArena is no longer running. Try Play again.');
+      return next;
+    }
+
+    next.readyBy = Number.isFinite(startedAt)
+      ? startedAt + readinessMs
+      : (previous?.readyBy ?? Date.now() + readinessMs);
+    if (await docker.ready(dockerId)) {
+      next.view.state = 'running';
+    } else if (Date.now() >= next.readyBy) {
+      console.error('OpenArena readiness timed out for Docker container', dockerId);
+      failed(next, 'OpenArena did not become ready. Try Play again.');
+    }
+    return next;
+  }
+
+  async function reconcile() {
+    const before = revision;
+    try {
+      const inventory = await docker.inventory();
+      const next = new Map(
+        Array.from(entries).filter(
+          ([, entry]) => entry.busy || (!entry.dockerId && entry.view.state === 'failed'),
+        ),
+      );
+      const found = await Promise.all(
+        inventory.map(async (game) => {
+          const key = keyFor(game);
+          const current = entries.get(key);
+          return current?.busy ? null : ([key, await observe(game, current)] as const);
+        }),
+      );
+      // A scan started before a command must not overwrite that command's reservation.
+      if (before !== revision) return;
+
+      for (const entry of found) if (entry) next.set(...entry);
+      const previous = snapshot();
+      entries = next;
+      available = true;
+      inventoryError = false;
+      if (!isDeepStrictEqual(previous, snapshot())) publish();
+    } catch (error) {
+      if (!inventoryError) console.error('Could not query the OpenArena containers.', error);
+      inventoryError = true;
+      if (available) {
+        available = false;
+        publish();
+      }
+    }
+  }
+
   return {
-    snapshot() {
-      return createSnapshot(Array.from(instances.values(), ({ container }) => ({ ...container })));
+    snapshot,
+    reconcile,
+
+    async watch(signal: AbortSignal) {
+      while (!signal.aborted) {
+        await reconcile();
+        try {
+          await delay(1_000, undefined, { signal });
+        } catch (error) {
+          if (!signal.aborted) throw error;
+        }
+      }
     },
 
-    subscribe(listener) {
+    subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -29,37 +169,39 @@ export function createGameInstances(transitionMs = 1_500): RunnerControl {
     },
 
     dispatch(command: RunnerCommand) {
-      if (!catalog.some(({ id }) => id === command.gameId)) return;
-      const key = JSON.stringify([command.profileId, command.gameId]);
-      const current = instances.get(key);
+      if (!available || !catalog.some(({ id }) => id === command.gameId)) return;
+      const key = keyFor(command);
+      const current = entries.get(key);
       if (command.type === 'play') {
-        if (current) return;
-        const container: RunnerContainer = {
-          id: randomUUID(),
-          gameId: command.gameId,
-          profileId: command.profileId,
-          state: 'starting',
+        if (current && (current.busy || current.view.state !== 'failed')) return;
+        const entry: Entry = {
+          view: {
+            id: randomUUID(),
+            gameId: command.gameId,
+            profileId: command.profileId,
+            state: 'starting',
+          },
+          dockerId: current?.dockerId,
+          busy: true,
         };
-        const transition = setTimeout(() => {
-          container.state = 'running';
-          publish();
-        }, transitionMs).unref();
-        instances.set(key, { container, transition });
-      } else {
-        if (
-          !current ||
-          current.container.id !== command.instanceId ||
-          current.container.state === 'stopping'
-        )
-          return;
-        clearTimeout(current.transition);
-        current.container.state = 'stopping';
-        current.transition = setTimeout(() => {
-          instances.delete(key);
-          publish();
-        }, transitionMs).unref();
+        entries.set(key, entry);
+        publish();
+        void start(key, entry);
+        return;
       }
+
+      if (!current || current.view.id !== command.instanceId || current.view.state === 'stopping')
+        return;
+      const { busy, view } = current;
+      current.view = {
+        id: view.id,
+        gameId: view.gameId,
+        profileId: view.profileId,
+        state: 'stopping',
+      };
+      current.busy = true;
       publish();
+      if (!busy) void stop(key, current, view.state === 'running');
     },
   };
 }
