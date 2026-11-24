@@ -4,7 +4,13 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
 import { Spinner } from '@/shared/components/ui/spinner';
 
-export function SignOutButton({ onSignedOut }: { onSignedOut: () => Promise<void> }) {
+export function SignOutButton({
+  compact = false,
+  onSignedOut,
+}: {
+  compact?: boolean;
+  onSignedOut: () => Promise<void>;
+}) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -23,13 +29,19 @@ export function SignOutButton({ onSignedOut }: { onSignedOut: () => Promise<void
   }
 
   return (
-    <div className="grid w-full gap-4">
+    <div className={compact ? 'grid min-w-0 justify-items-end gap-2' : 'grid w-full gap-4'}>
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="min-w-0 wrap-anywhere">{error}</AlertDescription>
         </Alert>
       )}
-      <Button className="w-full" type="button" disabled={busy} onClick={submit}>
+      <Button
+        variant={compact ? 'ghost' : 'default'}
+        className={compact ? undefined : 'w-full'}
+        type="button"
+        disabled={busy}
+        onClick={submit}
+      >
         {busy && <Spinner aria-hidden="true" data-icon="inline-start" />}
         {busy ? 'Signing out…' : 'Sign out'}
       </Button>

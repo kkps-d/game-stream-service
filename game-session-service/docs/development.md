@@ -55,4 +55,6 @@ The build creates `frontend/src/dist/` and `frontend/src-admin/dist/`, relative 
 
 The service manages frontend dependencies through the `frontend/` npm workspace and a single service lockfile. Run shadcn CLI commands from `frontend/`, where `components.json` lives. Use `npx shadcn@latest info --json` to check paths and `npx shadcn@latest add <component> --dry-run` to preview changes. Keep generated components on the shared `@/shared/lib/utils` import for `cn()`.
 
+The player library bundles its fonts and SteamGridDB cover art with the frontend. The covers are stored by game ID under `frontend/src/features/games/assets/`. [OpenArena by kyller3030](https://www.steamgriddb.com/grid/169182), [Minecraft: Java Edition by Slimemike](https://www.steamgriddb.com/grid/459024), [Minecraft: Tricky Trials by d3st1ny](https://www.steamgriddb.com/grid/496031), and [HoloCure by Twenty-Six_Twelve, submitted by Timidius](https://www.steamgriddb.com/grid/228586).
+
 Shared UI primitives come from the [shadcn/ui registry](https://ui.shadcn.com/docs/components) under its [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).

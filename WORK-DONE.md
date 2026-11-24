@@ -17,3 +17,4 @@
 - Made a clean OpenArena quit return to Idle and preserve saves. Verified real in-game Quit, relaunch, and a failed container exit in Firefox.
 - Added Minecraft 26.3, Minecraft 1.21.11, and HoloCure to the player catalog with icons and separate save volumes for each game. Verified local streaming and Stop in Firefox.
 - Added a VPS Compose project for Caddy HTTPS and coturn. Verified HTTPS routes, secure cookies, runner WSS, and authenticated TURN relay traffic locally.
+- Built the responsive Paperback game library with SteamGridDB covers and controls that follow the session state.

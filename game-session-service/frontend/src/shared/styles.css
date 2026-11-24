@@ -1,0 +1,45 @@
+@font-face {
+  font-family: 'DM Sans';
+  src: url('./fonts/dm-sans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('./fonts/instrument-serif.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+.player-library {
+  --background: #f6efe1;
+  --foreground: #1f3029;
+  --card: #fcf7ed;
+  --border: #c9c5b4;
+  --ring: #315d45;
+  --primary: #274539;
+  --primary-foreground: #fff9ed;
+  --secondary: #eee6d5;
+  --muted: #eee6d5;
+  --muted-foreground: #4f5d4d;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.player-library h1 {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.game-cover {
+  border-radius: 3px 8px 7px 3px;
+  box-shadow: 0 5px color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.game-cover::after {
+  position: absolute;
+  inset: 0;
+  box-shadow:
+    inset 6px 0 #140e1b32,
+    inset 8px 0 #fff6dc32;
+  content: '';
+}

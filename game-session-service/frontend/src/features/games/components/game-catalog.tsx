@@ -1,31 +1,24 @@
-import { Box, Crosshair, Gamepad2, Heart, type LucideIcon } from 'lucide-react';
+import { Gamepad2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
 import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import { Spinner } from '@/shared/components/ui/spinner';
 import { useGameCatalog } from '../hooks/use-game-catalog';
 
-const gameIcons: ReadonlyMap<string, LucideIcon> = new Map([
-  ['openarena', Crosshair],
-  ['minecraft', Box],
-  ['minecraft-1-21-11', Box],
-  ['holocure', Heart],
+const gameCovers: ReadonlyMap<string, string> = new Map([
+  ['openarena', new URL('../assets/openarena.webp', import.meta.url).href],
+  ['minecraft', new URL('../assets/minecraft.webp', import.meta.url).href],
+  ['minecraft-1-21-11', new URL('../assets/minecraft-1-21-11.webp', import.meta.url).href],
+  ['holocure', new URL('../assets/holocure.webp', import.meta.url).href],
 ]);
 
-const labels = {
-  idle: 'Idle',
-  starting: 'Starting',
-  running: 'Running',
-  stopping: 'Stopping',
-  failed: 'Failed',
+const gameStatus = {
+  idle: '',
+  starting: 'Starting game…',
+  running: 'Waiting for stream…',
+  ready: 'Stream ready',
+  stopping: 'Stopping…',
+  failed: 'Game failed',
 };
 
 export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Promise<void> }) {
@@ -33,7 +26,7 @@ export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Prom
   const controlsDisabled = !!pending || refreshFailed || !catalog?.runnerOnline;
 
   return (
-    <section className="grid gap-3" aria-label="Games">
+    <div className="grid min-w-0 gap-4">
       {refreshFailed ? (
         <Alert role="status">
           <AlertDescription>Could not refresh games. Retrying…</AlertDescription>
@@ -45,7 +38,7 @@ export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Prom
         </p>
       ) : !catalog.runnerOnline ? (
         <Alert role="status">
-          <AlertDescription>Game runner offline.</AlertDescription>
+          <AlertDescription>Game server offline. New sessions are unavailable.</AlertDescription>
         </Alert>
       ) : catalog.games.length === 0 ? (
         <Empty role="status">
@@ -56,78 +49,103 @@ export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Prom
       ) : null}
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="min-w-0 wrap-anywhere">{error}</AlertDescription>
         </Alert>
       )}
-      {catalog?.games.map((game) => {
-        const Icon = gameIcons.get(game.id) ?? Gamepad2;
-        const instance = game.instance;
-        const pendingAction = pending?.gameId === game.id ? pending.action.type : null;
-        return (
-          <article key={game.id}>
-            <Card>
-              <CardHeader className="flex flex-row items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <CardTitle>
-                    <h2>{game.title}</h2>
-                  </CardTitle>
-                  <CardDescription role="status">
-                    {labels[instance?.state ?? 'idle']}
-                  </CardDescription>
+      {!!catalog?.games.length && (
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-5 md:grid-cols-4">
+          {catalog.games.map((game) => {
+            const cover = gameCovers.get(game.id);
+            const instance = game.instance;
+            const pendingAction = pending?.gameId === game.id ? pending.action.type : null;
+            let state: keyof typeof gameStatus = instance?.state ?? 'idle';
+            if (pendingAction === 'play') state = 'starting';
+            if (pendingAction === 'stop') state = 'stopping';
+            if (state === 'running' && instance?.streamReady) state = 'ready';
+            const changing = state === 'starting' || state === 'stopping';
+            const playLabel = state === 'failed' ? 'Retry' : 'Play';
+            return (
+              <li key={game.id} className="grid min-w-0 content-start gap-1.5">
+                <div
+                  className="game-cover relative mb-1.5 grid aspect-2/3 place-items-center overflow-hidden bg-muted text-primary"
+                  aria-hidden="true"
+                >
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt=""
+                      width={500}
+                      height={750}
+                      decoding="async"
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  ) : (
+                    <Gamepad2 className="size-9" />
+                  )}
                 </div>
-              </CardHeader>
-              {instance?.error && (
-                <CardContent>
+                <h2 className="leading-tight font-bold wrap-anywhere">{game.title}</h2>
+                <div
+                  className="flex min-h-5 items-center gap-1.5 text-sm text-muted-foreground"
+                  role="status"
+                >
+                  {changing && <Spinner aria-hidden="true" />}
+                  {state === 'ready' && (
+                    <span
+                      className="size-1.5 shrink-0 rounded-full bg-primary"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {gameStatus[state]}
+                </div>
+                {instance?.error && pendingAction !== 'play' && (
                   <Alert variant="destructive">
-                    <AlertDescription>{instance.error}</AlertDescription>
+                    <AlertDescription className="min-w-0 wrap-anywhere">
+                      {instance.error}
+                    </AlertDescription>
                   </Alert>
-                </CardContent>
-              )}
-              <CardFooter className="flex-wrap gap-2">
-                {instance?.streamReady && (
-                  <Button asChild>
-                    <a
-                      href={`/viewer/play/?instance=${encodeURIComponent(instance.id)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open stream
-                    </a>
-                  </Button>
                 )}
-                <Button
-                  type="button"
-                  aria-label={`Play ${game.title}`}
-                  disabled={controlsDisabled || (instance !== null && instance.state !== 'failed')}
-                  onClick={() => void send(game, { type: 'play' })}
-                >
-                  {pendingAction === 'play' && (
-                    <Spinner aria-hidden="true" data-icon="inline-start" />
+                <div className="flex min-h-11 flex-wrap items-center gap-2">
+                  {state === 'ready' && instance && (
+                    <Button asChild className="h-11">
+                      <a
+                        aria-label={`Open stream for ${game.title} (opens in a new tab)`}
+                        href={`/viewer/play/?instance=${encodeURIComponent(instance.id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open stream
+                      </a>
+                    </Button>
                   )}
-                  Play
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-label={`Stop ${game.title}`}
-                  disabled={controlsDisabled || !instance || instance.state === 'stopping'}
-                  onClick={() => {
-                    if (instance) void send(game, { type: 'stop', instanceId: instance.id });
-                  }}
-                >
-                  {pendingAction === 'stop' && (
-                    <Spinner aria-hidden="true" data-icon="inline-start" />
+                  {(state === 'idle' || state === 'failed') && (
+                    <Button
+                      className="h-11"
+                      type="button"
+                      aria-label={`${playLabel} ${game.title}`}
+                      disabled={controlsDisabled}
+                      onClick={() => void send(game, { type: 'play' })}
+                    >
+                      {playLabel}
+                    </Button>
                   )}
-                  Stop
-                </Button>
-              </CardFooter>
-            </Card>
-          </article>
-        );
-      })}
-    </section>
+                  {instance && state !== 'stopping' && (
+                    <Button
+                      className="h-11"
+                      type="button"
+                      variant="outline"
+                      aria-label={`Stop ${game.title}`}
+                      disabled={controlsDisabled}
+                      onClick={() => void send(game, { type: 'stop', instanceId: instance.id })}
+                    >
+                      Stop
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

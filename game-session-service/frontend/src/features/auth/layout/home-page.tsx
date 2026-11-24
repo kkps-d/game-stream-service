@@ -1,7 +1,8 @@
-import { AuthCard } from '@/features/auth/components/auth-card';
+import { Gamepad2 } from 'lucide-react';
 import { SignOutButton } from '@/features/auth/components/sign-out-button';
 import type { SessionUser } from '@/features/auth/hooks/session-api';
 import { panelTitle } from '../../../shared/lib/panel';
+import '../../../shared/styles.css';
 import { GameCatalog } from '../../games/components/game-catalog';
 
 export function HomePage({
@@ -14,12 +15,27 @@ export function HomePage({
   onSessionExpired: () => Promise<void>;
 }) {
   return (
-    <AuthCard
-      title={panelTitle}
-      description={`Signed in as ${user.username}.`}
-      footer={<SignOutButton onSignedOut={onSignedOut} />}
-    >
-      <GameCatalog key={user.id} onSessionExpired={onSessionExpired} />
-    </AuthCard>
+    <div className="player-library min-h-dvh bg-background text-foreground">
+      <header className="border-b">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-10">
+          <div className="flex items-center gap-2 font-semibold">
+            <Gamepad2 className="size-5 text-primary" aria-hidden="true" />
+            <span>{panelTitle}</span>
+          </div>
+          <div className="flex min-w-0 max-w-full items-baseline gap-3">
+            <span className="min-w-0 text-sm wrap-anywhere text-muted-foreground">
+              {user.username}
+            </span>
+            <SignOutButton compact onSignedOut={onSignedOut} />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 pb-10 sm:gap-5 sm:px-10">
+        <h1 className="text-[clamp(3rem,8vw,5.5rem)] leading-none font-normal tracking-tight">
+          Game library
+        </h1>
+        <GameCatalog key={user.id} onSessionExpired={onSessionExpired} />
+      </main>
+    </div>
   );
 }
