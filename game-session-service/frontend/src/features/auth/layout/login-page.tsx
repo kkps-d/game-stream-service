@@ -4,8 +4,7 @@ import { panel, panelTitle } from '../../../shared/lib/panel';
 
 export function LoginPage({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
   return (
-    <AuthCard title={panelTitle}>
-      <p className="mt-2 text-sm text-muted-foreground">Sign in to your account.</p>
+    <AuthCard title={panelTitle} description="Sign in to your account.">
       <LoginForm panel={panel} onSignedIn={onSignedIn} />
     </AuthCard>
   );

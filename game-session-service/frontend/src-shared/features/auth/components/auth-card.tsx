@@ -1,12 +1,36 @@
 import type { ReactNode } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
 
-export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
+export function AuthCard({
+  title,
+  description,
+  children,
+  footer,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
     <main className="grid min-h-dvh place-items-center px-4 py-8">
-      <section className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {children}
-      </section>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>
+            <h1>{title}</h1>
+          </CardTitle>
+          {description && <CardDescription>{description}</CardDescription>}
+        </CardHeader>
+        {children && <CardContent>{children}</CardContent>}
+        {footer && <CardFooter>{footer}</CardFooter>}
+      </Card>
     </main>
   );
 }

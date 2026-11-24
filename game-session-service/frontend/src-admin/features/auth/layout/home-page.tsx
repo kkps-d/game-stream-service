@@ -11,9 +11,10 @@ export function HomePage({
   onSignedOut: () => Promise<void>;
 }) {
   return (
-    <AuthCard title={panelTitle}>
-      <p className="mt-2 text-sm text-muted-foreground">Signed in as {user.username}.</p>
-      <SignOutButton onSignedOut={onSignedOut} />
-    </AuthCard>
+    <AuthCard
+      title={panelTitle}
+      description={`Signed in as ${user.username}.`}
+      footer={<SignOutButton onSignedOut={onSignedOut} />}
+    />
   );
 }

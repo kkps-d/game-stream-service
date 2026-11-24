@@ -3,10 +3,13 @@ import { AuthCard } from './auth-card';
 
 export function SessionError() {
   return (
-    <AuthCard title="Could not check your session">
-      <Button className="mt-6 w-full" onClick={() => window.location.reload()}>
-        Try again
-      </Button>
-    </AuthCard>
+    <AuthCard
+      title="Could not check your session"
+      footer={
+        <Button className="w-full" onClick={() => window.location.reload()}>
+          Try again
+        </Button>
+      }
+    />
   );
 }

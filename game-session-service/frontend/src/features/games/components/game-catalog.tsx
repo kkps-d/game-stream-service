@@ -1,4 +1,15 @@
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
+import { Empty, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
+import { Spinner } from '@/shared/components/ui/spinner';
 import { useGameCatalog } from '../hooks/use-game-catalog';
 
 const labels = {
@@ -14,55 +25,79 @@ export function GameCatalog({ onSessionExpired }: { onSessionExpired: () => Prom
   const controlsDisabled = !!pending || refreshFailed || !catalog?.runnerOnline;
 
   return (
-    <section className="mt-6" aria-label="Games">
+    <section className="grid gap-3" aria-label="Games">
       {refreshFailed ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Could not refresh games. Retrying…
-        </p>
+        <Alert role="status">
+          <AlertDescription>Could not refresh games. Retrying…</AlertDescription>
+        </Alert>
       ) : !catalog ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner aria-hidden="true" />
           Loading games…
         </p>
       ) : !catalog.runnerOnline ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Game runner offline.
-        </p>
+        <Alert role="status">
+          <AlertDescription>Game runner offline.</AlertDescription>
+        </Alert>
       ) : catalog.games.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No games available.</p>
+        <Empty role="status">
+          <EmptyHeader>
+            <EmptyTitle>No games available.</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : null}
       {error && (
-        <p className="mb-2 text-sm text-destructive" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       {catalog?.games.map((game) => {
         const instance = game.instance;
+        const pendingAction = pending?.gameId === game.id ? pending.action.type : null;
         return (
-          <article key={game.id} className="rounded-lg border border-slate-200 p-4">
-            <h2 className="font-medium">{game.title}</h2>
-            <p role="status" className="mt-1 text-sm text-muted-foreground">
-              {labels[instance?.state ?? 'idle']}
-              {instance?.error && <span className="block text-destructive">{instance.error}</span>}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Button
-                type="button"
-                disabled={controlsDisabled || (instance !== null && instance.state !== 'failed')}
-                onClick={() => void send(game, { type: 'play' })}
-              >
-                Play
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={controlsDisabled || !instance || instance.state === 'stopping'}
-                onClick={() => {
-                  if (instance) void send(game, { type: 'stop', instanceId: instance.id });
-                }}
-              >
-                Stop
-              </Button>
-            </div>
+          <article key={game.id}>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <h2>{game.title}</h2>
+                </CardTitle>
+                <CardDescription role="status">{labels[instance?.state ?? 'idle']}</CardDescription>
+              </CardHeader>
+              {instance?.error && (
+                <CardContent>
+                  <Alert variant="destructive">
+                    <AlertDescription>{instance.error}</AlertDescription>
+                  </Alert>
+                </CardContent>
+              )}
+              <CardFooter className="flex-wrap gap-2">
+                <Button
+                  type="button"
+                  aria-label={`Play ${game.title}`}
+                  disabled={controlsDisabled || (instance !== null && instance.state !== 'failed')}
+                  onClick={() => void send(game, { type: 'play' })}
+                >
+                  {pendingAction === 'play' && (
+                    <Spinner aria-hidden="true" data-icon="inline-start" />
+                  )}
+                  Play
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-label={`Stop ${game.title}`}
+                  disabled={controlsDisabled || !instance || instance.state === 'stopping'}
+                  onClick={() => {
+                    if (instance) void send(game, { type: 'stop', instanceId: instance.id });
+                  }}
+                >
+                  {pendingAction === 'stop' && (
+                    <Spinner aria-hidden="true" data-icon="inline-start" />
+                  )}
+                  Stop
+                </Button>
+              </CardFooter>
+            </Card>
           </article>
         );
       })}

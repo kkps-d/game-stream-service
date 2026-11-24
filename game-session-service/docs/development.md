@@ -45,4 +45,6 @@ Each panel organizes its pages and supporting code by feature. The `src-shared/`
 
 The build creates `frontend/src/dist/` and `frontend/src-admin/dist/`, relative to this service. Serve each static bundle with an SPA fallback and a same-origin `/api` route to the backend. For HTTPS deployments, use `NODE_ENV=production`, set `APP_ORIGINS` to the public origins, and have the local reverse proxy set trusted forwarding headers. Production deployment has yet to be configured.
 
-Shared Button and Input source comes from the [shadcn/ui registry](https://ui.shadcn.com/docs/components) under its [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+The service manages frontend dependencies through the `frontend/` npm workspace and a single service lockfile. Run shadcn CLI commands from `frontend/`, where `components.json` lives. Use `npx shadcn@latest info --json` to check paths and `npx shadcn@latest add <component> --dry-run` to preview changes. Keep generated components on the shared `@/shared/lib/utils` import for `cn()`.
+
+Shared UI primitives come from the [shadcn/ui registry](https://ui.shadcn.com/docs/components) under its [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).

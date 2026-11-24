@@ -14,10 +14,12 @@ export function HomePage({
   onSessionExpired: () => Promise<void>;
 }) {
   return (
-    <AuthCard title={panelTitle}>
-      <p className="mt-2 text-sm text-muted-foreground">Signed in as {user.username}.</p>
+    <AuthCard
+      title={panelTitle}
+      description={`Signed in as ${user.username}.`}
+      footer={<SignOutButton onSignedOut={onSignedOut} />}
+    >
       <GameCatalog key={user.id} onSessionExpired={onSessionExpired} />
-      <SignOutButton onSignedOut={onSignedOut} />
     </AuthCard>
   );
 }

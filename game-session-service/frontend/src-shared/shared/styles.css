@@ -7,31 +7,45 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--secondary);
   --color-accent-foreground: var(--foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 :root {
   --background: #f8fafc;
   --foreground: #172132;
+  --card: #fff;
+  --border: #e2e8f0;
   --input: #b7c2d0;
   --ring: #2563eb;
   --primary: #1d4ed8;
   --primary-foreground: #fff;
   --secondary: #e2e8f0;
+  --muted: #f1f5f9;
   --muted-foreground: #475569;
   --destructive: #b91c1c;
+  --destructive-foreground: #fff;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
 }

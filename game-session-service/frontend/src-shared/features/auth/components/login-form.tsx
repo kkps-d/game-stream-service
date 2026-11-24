@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { signIn, type Panel } from '@/features/auth/hooks/session-api';
+import { Alert, AlertDescription } from '@/shared/components/ui/alert';
 import { Button } from '@/shared/components/ui/button';
+import { Field, FieldGroup, FieldLabel } from '@/shared/components/ui/field';
 import { Input } from '@/shared/components/ui/input';
+import { Spinner } from '@/shared/components/ui/spinner';
 
 export function LoginForm({
   panel,
@@ -30,32 +33,31 @@ export function LoginForm({
   }
 
   return (
-    <form className="mt-6 grid gap-4" onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <label className="text-sm font-medium" htmlFor="username">
-          Username
-        </label>
-        <Input id="username" name="username" autoComplete="username" maxLength={32} required />
-      </div>
-      <div className="grid gap-1.5">
-        <label className="text-sm font-medium" htmlFor="password">
-          Password
-        </label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          maxLength={128}
-          required
-        />
-      </div>
+    <form className="flex flex-col gap-4" onSubmit={submit}>
+      <FieldGroup className="gap-4">
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="username">Username</FieldLabel>
+          <Input id="username" name="username" autoComplete="username" maxLength={32} required />
+        </Field>
+        <Field className="gap-1.5">
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            maxLength={128}
+            required
+          />
+        </Field>
+      </FieldGroup>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       <Button className="w-full" type="submit" disabled={busy}>
+        {busy && <Spinner aria-hidden="true" data-icon="inline-start" />}
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
