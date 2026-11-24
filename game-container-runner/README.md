@@ -12,7 +12,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 Set the same `RUNNER_ID` in both services. Set `RUNNER_GPU_PCI` to the game host GPU's PCI address from `/dev/dri/by-path`, for example `0000:01:00.0`. The runner uses NVIDIA CDI or AMD DRM device mappings. Start the session API, then run `npm start` here. The example WebSocket URL uses the default local API port. Sign in to the player panel and use **Play** or **Stop** on a game card. Sign in to the admin panel and open `/api/admin/runner` on the same origin to read the full snapshot.
 
-A game becomes **Running** when its bundled agent responds inside the container. **Stop** removes the container and keeps its save volume. Each player and game gets a separate volume, including each Minecraft version. Restarting the runner recovers existing games from Docker.
+A game becomes **Running** when its bundled agent responds inside the container. **Stop** removes the container and keeps its save volume. Each player and game gets a separate volume, including each Minecraft version. Restarting the runner recovers existing games from Docker. New games start with a 1920×1080 display at 60 fps. Select **High** in the viewer to stream at 1080p60.
 
 ## Game images
 
