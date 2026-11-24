@@ -20,3 +20,4 @@
 - Built the responsive Paperback game library with SteamGridDB covers and controls that follow the session state.
 - Added authenticated WSS agent registration and a dedicated outbound game bridge policy for VPS testing.
 - Deployed the session service, Caddy, and coturn at `games.kkps.dev` with fresh test accounts. Verified trusted HTTPS, secure cookies, runner and agent WSS, launch-token replay rejection, and 720p OpenArena playback over TURN from the VPS. The on-prem game bridge allows only VPS signaling and TURN traffic. The local HTTPS regression passed.
+- After the VPS reboot, verified public OpenArena video, non-silent audio, keyboard and mouse input, viewer reconnect, and Stop with saves preserved. Chromium ran on the game host to keep its load off the VPS.

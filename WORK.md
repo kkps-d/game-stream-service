@@ -7,7 +7,3 @@
 - [x] **Player authorization and signaling.** The session service checks ownership before forwarding offers or issuing TURN credentials.
 - [x] **Agent and viewer integration.** The player panel opens the game viewer with relay-only video, audio, and input.
 - [x] **Local acceptance test.** Verified OpenArena playback, controls, account isolation, and Stop in Chromium.
-
-## Internet testing
-
-- [ ] Complete the OpenArena audio, input, reconnect, and Stop checks against the public deployment. Use a browser off the VPS to leave its memory available for the session service and coturn.
