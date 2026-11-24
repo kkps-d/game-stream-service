@@ -1,13 +1,10 @@
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adminPort, playerPort } from '../ports.ts';
+import { resolveDatabasePath } from './database-path.ts';
 
 const serviceRoot = fileURLToPath(new URL('../', import.meta.url));
 
-export const databasePath = resolve(
-  serviceRoot,
-  process.env.DATABASE_PATH || '.data/game-session.sqlite',
-);
+export const databasePath = resolveDatabasePath(serviceRoot);
 
 export function readConfig() {
   const sessionSecret = process.env.SESSION_SECRET;

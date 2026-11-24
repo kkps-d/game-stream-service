@@ -2,7 +2,11 @@
 
 ## Backend
 
-The TypeScript source runs directly on Node 24. The service creates the SQLite database on first use. `DATABASE_PATH` is relative to `game-session-service/` unless it is absolute.
+The TypeScript source runs directly on Node 24. Drizzle uses the `better-sqlite3` driver with WAL mode. Run `npm run db:push` from `game-session-service/` before starting the API or creating accounts. The command applies the TypeScript schema directly. `DATABASE_PATH` is relative to `game-session-service/` unless it is absolute. To start over with a local database, stop the API, remove the SQLite file and its WAL and SHM sidecars, then run `db:push` and recreate accounts.
+
+Drizzle ORM and Kit use matching pinned versions to keep repeated SQLite schema pushes stable with table constraints.
+
+The auth feature has `types/` for domain types and request DTOs, `services/` for credentials, sessions, and schema, and `controller/` for HTTP and the account CLI.
 
 Passport Local verifies username/password credentials against Argon2id hashes. Express uses an HTTP-only, SameSite cookie for sessions stored in SQLite. The backend checks the current account role for admin access, rate-limits sign-in, and checks `APP_ORIGINS` for requests that change state.
 
@@ -19,7 +23,9 @@ The API binds to `127.0.0.1:3100` by default. Set `API_PORT` in `.env` to change
 
 ## Frontend
 
-Each panel has its own HTML entry point and TanStack Router. Vite proxies `/api` so browsers use same-origin cookie requests. Signing in or out reloads the active session through the router. Change `PLAYER_PORT` or `ADMIN_PORT` in `.env` to override the local panel ports.
+The player and admin panels each own a code-based TanStack route tree. `/login` handles sign-in and `/` checks the appropriate session before showing the signed-in page. Vite proxies `/api` so browsers use same-origin cookie requests. Change `PLAYER_PORT` or `ADMIN_PORT` in `.env` to override the local panel ports.
+
+Each panel organizes its pages and supporting code by feature. The `src-shared/` tree holds components, styles, and API functions used by both panels.
 
 The build creates `frontend/src/dist/` and `frontend/src-admin/dist/`, relative to this service. Serve each static bundle with an SPA fallback and a same-origin `/api` route to the backend. For HTTPS deployments, use `NODE_ENV=production`, set `APP_ORIGINS` to the public origins, and have the local reverse proxy set trusted forwarding headers. Production deployment has yet to be configured.
 

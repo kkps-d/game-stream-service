@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "paths": { "@/*": ["./shared/*"] }
+    "paths": { "@/*": ["./src-shared/*"] }
   },
-  "include": ["src", "src-admin", "shared", "*.ts"]
+  "include": ["src", "src-admin", "src-shared", "*.ts"]
 }

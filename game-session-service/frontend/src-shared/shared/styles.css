@@ -1,8 +1,8 @@
 @import 'tailwindcss' source(none);
 
-@source '../src';
-@source '../src-admin';
-@source './';
+@source '../../src';
+@source '../../src-admin';
+@source '../';
 
 @theme inline {
   --color-background: var(--background);

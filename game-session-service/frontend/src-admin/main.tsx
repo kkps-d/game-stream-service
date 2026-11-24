@@ -1,24 +1,8 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-  RouterProvider,
-} from '@tanstack/react-router';
+import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AccountPanel } from '@/account-panel';
-import { getSession } from '@/session-api';
-import '@/styles.css';
-
-const rootRoute = createRootRoute({ component: Outlet });
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  loader: () => getSession('admin'),
-  component: () => <AccountPanel panel="admin" user={indexRoute.useLoaderData()} />,
-});
-const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]) });
+import { router } from './router';
+import '@/shared/styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

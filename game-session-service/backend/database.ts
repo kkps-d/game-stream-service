@@ -1,25 +1,31 @@
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { existsSync } from 'node:fs';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+
+const missingSchemaMessage = 'The database schema is missing. Run npm run db:push first.';
 
 export function openDatabase(filename: string) {
-  if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true });
+  if (!existsSync(filename)) throw new Error(missingSchemaMessage);
 
-  const database = new DatabaseSync(filename, { timeout: 5000 });
-  database.exec(`
-    PRAGMA journal_mode = WAL;
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY,
-      username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role IN ('user', 'admin'))
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      data TEXT NOT NULL,
-      expires_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions (expires_at);
-  `);
-  return database;
+  const client = new Database(filename, { fileMustExist: true });
+  try {
+    const tableCount = client
+      .prepare(
+        "SELECT count(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('users', 'sessions')",
+      )
+      .pluck()
+      .get();
+    if (tableCount !== 2) throw new Error(missingSchemaMessage);
+
+    client.pragma('journal_mode = WAL');
+    return {
+      db: drizzle({ client }),
+      close: () => client.close(),
+    };
+  } catch (error) {
+    client.close();
+    throw error;
+  }
 }
+
+export type AuthDatabase = ReturnType<typeof openDatabase>['db'];

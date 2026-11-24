@@ -1,8 +1,10 @@
 {
+  "include": ["**/*.ts", "../drizzle.config.ts"],
   "compilerOptions": {
     "target": "ES2024",
     "module": "NodeNext",
     "strict": true,
+    "skipLibCheck": true,
     "noEmit": true,
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,

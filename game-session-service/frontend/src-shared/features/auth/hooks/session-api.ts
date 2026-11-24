@@ -4,7 +4,7 @@ export interface SessionUser {
   role: 'user' | 'admin';
 }
 
-type Panel = 'user' | 'admin';
+export type Panel = 'user' | 'admin';
 
 export async function getSession(panel: Panel): Promise<SessionUser | null> {
   const response = await fetch(panel === 'admin' ? '/api/admin/session' : '/api/session');

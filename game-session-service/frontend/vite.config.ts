@@ -6,6 +6,6 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   root: resolve(import.meta.dirname, 'src'),
   plugins: [react(), tailwindcss()],
-  resolve: { alias: { '@': resolve(import.meta.dirname, 'shared') } },
+  resolve: { alias: { '@': resolve(import.meta.dirname, 'src-shared') } },
   build: { emptyOutDir: true },
 });

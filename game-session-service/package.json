@@ -5,21 +5,24 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env frontend/dev.ts",
     "dev:api": "node --env-file-if-exists=.env --watch backend/server.ts",
-    "account:create": "node --env-file-if-exists=.env backend/create-account.ts",
+    "account:create": "node --env-file-if-exists=.env backend/features/auth/controller/create-account.ts",
     "build": "npm run check && cd frontend && vite build --config vite.config.ts && vite build src-admin --config vite.config.ts",
     "check": "tsc --noEmit -p backend && tsc --noEmit -p frontend",
     "test": "node --test backend/auth.test.ts",
     "start:api": "node --env-file-if-exists=.env backend/server.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@inquirer/password": "^4.0.0",
     "@node-rs/argon2": "^2.0.2",
     "@tanstack/react-router": "^1.120.0",
+    "better-sqlite3": "^13.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "drizzle-orm": "1.0.0-rc.6",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.0",
     "express-session": "^1.18.0",
@@ -33,6 +36,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.0",
     "@types/node": "^24.0.0",
@@ -41,6 +45,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "drizzle-kit": "1.0.0-rc.6",
     "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.6.0",

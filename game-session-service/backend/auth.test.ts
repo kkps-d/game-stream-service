@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createAccount } from './accounts.ts';
+import { fileURLToPath } from 'node:url';
 import { createApp } from './app.ts';
 import { openDatabase } from './database.ts';
+import { createAccount } from './features/auth/services/accounts.ts';
+import { sessions } from './features/auth/services/schema.ts';
 
 const origin = 'http://localhost:5180';
 const options = {
@@ -17,15 +20,15 @@ const options = {
 const password = 'test-account-password';
 
 async function listen(filename: string) {
-  const database = openDatabase(filename);
-  const app = await createApp(database, options);
+  const { db, close } = openDatabase(filename);
+  const app = await createApp(db, options);
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
   assert(address && typeof address !== 'string');
 
   return {
-    database,
+    db,
     request(path: string, init?: RequestInit) {
       return fetch(`http://127.0.0.1:${address.port}/api/${path}`, init);
     },
@@ -33,7 +36,7 @@ async function listen(filename: string) {
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
-      database.close();
+      close();
     },
   };
 }
@@ -49,13 +52,27 @@ function login(username: string, pass = password, requestOrigin = origin): Reque
 test('authenticates local accounts, persists sessions, and checks admin access', async (context) => {
   const dir = mkdtempSync(join(tmpdir(), 'game-session-test-'));
   const filename = join(dir, 'auth.sqlite');
-  let service = await listen(filename);
+  let service: Awaited<ReturnType<typeof listen>> | undefined;
   context.after(async () => {
-    await service.close();
+    await service?.close();
     rmSync(dir, { recursive: true, force: true });
   });
-  await createAccount(service.database, 'Player', password, 'user');
-  await createAccount(service.database, 'Operator', password, 'admin');
+  assert.throws(() => openDatabase(filename), /npm run db:push/);
+  execFileSync(
+    process.execPath,
+    [fileURLToPath(new URL('../node_modules/drizzle-kit/bin.js', import.meta.url)), 'push'],
+    {
+      cwd: fileURLToPath(new URL('../', import.meta.url)),
+      env: { ...process.env, DATABASE_PATH: filename },
+    },
+  );
+
+  service = await listen(filename);
+  await createAccount(service.db, 'Player', password, 'user');
+  await createAccount(service.db, 'Operator', password, 'admin');
+  await assert.rejects(createAccount(service.db, 'PLAYER', password, 'user'), {
+    message: 'That username is already in use.',
+  });
 
   assert.equal((await service.request('health')).status, 200);
   assert.equal((await service.request('session')).status, 401);
@@ -83,6 +100,7 @@ test('authenticates local accounts, persists sessions, and checks admin access',
   const adminCookie = admin.headers.get('set-cookie')!.split(';')[0];
 
   await service.close();
+  service = undefined;
   service = await listen(filename);
 
   assert.equal(
@@ -106,6 +124,16 @@ test('authenticates local accounts, persists sessions, and checks admin access',
   );
   assert.equal(
     (await service.request('admin/session', { headers: { Cookie: adminCookie } })).status,
+    401,
+  );
+
+  const expired = service.db
+    .update(sessions)
+    .set({ expiresAt: Date.now() - 1 })
+    .run();
+  assert.equal(expired.changes, 1);
+  assert.equal(
+    (await service.request('session', { headers: { Cookie: playerCookie } })).status,
     401,
   );
 });
