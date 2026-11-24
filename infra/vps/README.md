@@ -45,7 +45,9 @@ Caddy stores its certificates in the `caddy_data` volume. The runner connects to
 
 ## Game host
 
-Rebuild the streamer and OpenArena with the WSS-capable agent. Apply the firewall before creating the dedicated bridge or starting the VPS runner. Substitute the public VPS IPv4 below.
+Rebuild the streamer and every game image in the player catalog when the agent changes. Each game image bundles its own copy of the agent. Use the [game image build commands](../../game-container-runner/README.md#local-streaming-network). Start new game containers to pick up the rebuilt images.
+
+Apply the firewall before creating the dedicated bridge or starting the VPS runner. Substitute the public VPS IPv4 below.
 
 ```sh
 { printf 'define vps_ip = 203.0.113.10\n'; cat game-bridge.nft; } | sudo nft -f -
