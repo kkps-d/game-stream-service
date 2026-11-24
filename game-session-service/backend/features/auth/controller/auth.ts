@@ -22,6 +22,26 @@ export interface AuthOptions {
 const cookieName = 'game_session';
 const cookieOptions = { httpOnly: true, sameSite: 'lax', path: '/' } as const;
 
+function requireSession(adminOnly: boolean): RequestHandler {
+  return (request, response, next) => {
+    if (!request.user) {
+      response.status(401).json({ error: 'Sign in to continue.' });
+      return;
+    }
+    if (adminOnly && request.user.role !== 'admin') {
+      response.status(403).json({ error: 'Sign in with an administrator account.' });
+      return;
+    }
+    next();
+  };
+}
+
+export const requireAdminSession = requireSession(true);
+
+const sendSession: RequestHandler = (request, response) => {
+  response.json({ user: request.user });
+};
+
 export async function createAuthRouter(database: AuthDatabase, options: AuthOptions) {
   const router = express.Router();
   const passport = new Passport();
@@ -100,24 +120,10 @@ export async function createAuthRouter(database: AuthDatabase, options: AuthOpti
     };
   }
 
-  function readSession(adminOnly: boolean): RequestHandler {
-    return (request, response) => {
-      if (!request.user) {
-        response.status(401).json({ error: 'Sign in to continue.' });
-        return;
-      }
-      if (adminOnly && request.user.role !== 'admin') {
-        response.status(403).json({ error: 'Sign in with an administrator account.' });
-        return;
-      }
-      response.json({ user: request.user });
-    };
-  }
-
   router.post('/sign-in', loginLimit, signIn(false));
   router.post('/admin/sign-in', loginLimit, signIn(true));
-  router.get('/session', readSession(false));
-  router.get('/admin/session', readSession(true));
+  router.get('/session', requireSession(false), sendSession);
+  router.get('/admin/session', requireAdminSession, sendSession);
   router.post('/sign-out', (request, response, next) => {
     request.session.destroy((error) => {
       if (error) return next(error);

@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createApp } from './app.ts';
 import { openDatabase } from './database.ts';
 import { createAccount } from './features/auth/services/accounts.ts';
 import { sessions } from './features/auth/services/schema.ts';
+import { createSessionServer } from './http-server.ts';
 
 const origin = 'http://localhost:5180';
 const options = {
@@ -21,8 +21,8 @@ const password = 'test-account-password';
 
 async function listen(filename: string) {
   const { db, close } = openDatabase(filename);
-  const app = await createApp(db, options);
-  const server = app.listen(0, '127.0.0.1');
+  const server = await createSessionServer(db, options);
+  server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
   assert(address && typeof address !== 'string');
@@ -98,6 +98,10 @@ test('authenticates local accounts, persists sessions, and checks admin access',
   const admin = await service.request('admin/sign-in', login('operator'));
   assert.equal(admin.status, 200);
   const adminCookie = admin.headers.get('set-cookie')!.split(';')[0];
+
+  const runner = await service.request('admin/runner', { headers: { Cookie: adminCookie } });
+  assert.equal(runner.status, 200);
+  assert.deepEqual(await runner.json(), { runner: null });
 
   await service.close();
   service = undefined;

@@ -8,7 +8,7 @@
     "account:create": "node --env-file-if-exists=.env backend/features/auth/controller/create-account.ts",
     "build": "npm run check && cd frontend && vite build --config vite.config.ts && vite build src-admin --config vite.config.ts",
     "check": "tsc --noEmit -p backend && tsc --noEmit -p frontend",
-    "test": "node --test backend/auth.test.ts",
+    "test": "node --test backend/auth.test.ts backend/runner.test.ts",
     "start:api": "node --env-file-if-exists=.env backend/server.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -31,7 +31,8 @@
     "radix-ui": "^1.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -44,6 +45,7 @@
     "@types/passport-local": "^1.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.0.0",
     "drizzle-kit": "1.0.0-rc.6",
     "eslint": "^10.15.0",

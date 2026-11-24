@@ -4,3 +4,4 @@
 - Created the repository guidelines and the Express, SQLite, and TypeScript foundation for `game-session-service`.
 - Added username/password sessions and separate Vite, React, shadcn/ui, and TanStack Router entry points for players and admins.
 - Refactored the game session service around auth features, initialized SQLite through Drizzle, and added dedicated player and admin login routes.
+- Scaffolded the game container runner and connected it to the session service over an authenticated WebSocket. Verified catalog snapshots and reconnects on loopback.

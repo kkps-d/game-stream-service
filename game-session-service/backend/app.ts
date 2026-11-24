@@ -1,12 +1,18 @@
 import express, { type ErrorRequestHandler } from 'express';
 import type { AuthDatabase } from './database.ts';
 import { createAuthRouter, type AuthOptions } from './features/auth/controller/auth.ts';
+import { createRunnerStatusRouter } from './features/runner/controller/status.ts';
+import type { RunnerRegistry } from './features/runner/services/status.ts';
 
-interface AppOptions extends AuthOptions {
+export interface AppOptions extends AuthOptions {
   origins: ReadonlySet<string>;
 }
 
-export async function createApp(database: AuthDatabase, options: AppOptions) {
+export async function createApp(
+  database: AuthDatabase,
+  options: AppOptions,
+  runners: RunnerRegistry,
+) {
   const app = express();
   app.disable('x-powered-by');
   if (options.secureCookies) app.set('trust proxy', 'loopback');
@@ -26,6 +32,7 @@ export async function createApp(database: AuthDatabase, options: AppOptions) {
   });
 
   app.use('/api', await createAuthRouter(database, options));
+  app.use('/api', createRunnerStatusRouter(runners));
   app.use('/api', (_request, response) => response.status(404).json({ error: 'Route not found.' }));
   const handleError: ErrorRequestHandler = (error, _request, response, next) => {
     if (response.headersSent) return next(error);

@@ -1,0 +1,29 @@
+{
+  "name": "game-container-runner",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.2 <25"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.ts",
+    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "check": "tsc --noEmit",
+    "test": "node --test src/features/runner/controller/websocket.test.ts",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
+    "eslint": "^10.15.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0"
+  },
+  "dependencies": {
+    "ws": "^8.23.0"
+  }
+}

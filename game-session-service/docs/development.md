@@ -21,6 +21,12 @@ Passport Local verifies username/password credentials against Argon2id hashes. E
 
 The API binds to `127.0.0.1:3100` by default. Set `API_PORT` in `.env` to change the port for the API and both Vite proxies. Run `npm run start:api` to start without file watching.
 
+## Runner connection
+
+Set `RUNNER_ID` and `RUNNER_TOKEN` together to enable WebSocket upgrades at `/api/runners/connect`. The admin-only `GET /api/admin/runner` returns the runner's ID, `online` flag, and latest snapshot. An offline runner has a null snapshot. With runner integration disabled, the endpoint returns `{"runner": null}`.
+
+See the [runner setup](../../game-container-runner/README.md) for local testing.
+
 ## Frontend
 
 The player and admin panels each own a code-based TanStack route tree. `/login` handles sign-in and `/` checks the appropriate session before showing the signed-in page. Vite proxies `/api` so browsers use same-origin cookie requests. Change `PLAYER_PORT` or `ADMIN_PORT` in `.env` to override the local panel ports.
