@@ -1,0 +1,55 @@
+{
+  "name": "game-session-service",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env frontend/dev.ts",
+    "dev:api": "node --env-file-if-exists=.env --watch backend/server.ts",
+    "account:create": "node --env-file-if-exists=.env backend/create-account.ts",
+    "build": "npm run check && cd frontend && vite build --config vite.config.ts && vite build src-admin --config vite.config.ts",
+    "check": "tsc --noEmit -p backend && tsc --noEmit -p frontend",
+    "test": "node --test backend/auth.test.ts",
+    "start:api": "node --env-file-if-exists=.env backend/server.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@inquirer/password": "^4.0.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@tanstack/react-router": "^1.120.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.0",
+    "express-session": "^1.18.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "radix-ui": "^1.4.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.0",
+    "@types/node": "^24.0.0",
+    "@types/passport": "^1.0.0",
+    "@types/passport-local": "^1.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.6.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vite": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=24.2 <25"
+  }
+}
