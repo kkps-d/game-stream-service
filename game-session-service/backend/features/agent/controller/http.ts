@@ -1,7 +1,10 @@
 import { createServer } from 'node:http';
 
-export function createAgentServer() {
-  return createServer((request, response) => {
+import type { AgentRegistrations } from '../services/registrations.ts';
+import { attachAgentWebSocket } from './websocket.ts';
+
+export function createAgentServer(registrations?: AgentRegistrations) {
+  const server = createServer((request, response) => {
     const health = request.method === 'GET' && request.url?.split('?', 1)[0] === '/api/health';
     response
       .writeHead(health ? 200 : 404, {
@@ -10,4 +13,6 @@ export function createAgentServer() {
       })
       .end(JSON.stringify(health ? { status: 'ok' } : { error: 'Route not found.' }));
   });
+  if (registrations) attachAgentWebSocket(server, registrations);
+  return server;
 }

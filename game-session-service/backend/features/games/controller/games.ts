@@ -1,5 +1,6 @@
 import express, { type Response } from 'express';
 import { requireUserSession } from '../../auth/controller/auth.ts';
+import type { AgentRegistrations } from '../../agent/services/registrations.ts';
 import type { RunnerRegistry } from '../../runner/services/status.ts';
 import { createGamesService } from '../services/catalog.ts';
 import type { GameCommandResult } from '../types/action.ts';
@@ -16,9 +17,9 @@ function respond(response: Response, result: GameCommandResult) {
   }
 }
 
-export function createGamesRouter(runners: RunnerRegistry) {
+export function createGamesRouter(runners: RunnerRegistry, registrations?: AgentRegistrations) {
   const router = express.Router();
-  const games = createGamesService(runners);
+  const games = createGamesService(runners, registrations);
 
   router.get('/games', requireUserSession, (request, response) => {
     response.json(games.list(request.user!.id));

@@ -3,13 +3,17 @@ import { apiPort } from '../ports.ts';
 import { databasePath, readConfig } from './config.ts';
 import { openDatabase } from './database.ts';
 import { createAgentServer } from './features/agent/controller/http.ts';
+import { createAgentRegistrations } from './features/agent/services/registrations.ts';
 import { createSessionServer } from './http-server.ts';
 
 const config = readConfig();
 const { db } = openDatabase(databasePath);
-const server = await createSessionServer(db, config);
+const registrations = config.agentBindAddress
+  ? createAgentRegistrations(new URL(`ws://${config.agentBindAddress}:${apiPort}`))
+  : undefined;
+const server = await createSessionServer(db, config, registrations);
 if (config.agentBindAddress) {
-  const agentServer = createAgentServer();
+  const agentServer = createAgentServer(registrations);
   agentServer.listen(apiPort, config.agentBindAddress);
   await once(agentServer, 'listening').catch((error: unknown) => {
     throw new Error(

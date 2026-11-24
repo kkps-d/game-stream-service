@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import type { PlayerCatalog } from '../../../../../protocol/games.ts';
+import type { AgentRegistrations } from '../../agent/services/registrations.ts';
 import type { RunnerRegistry } from '../../runner/services/status.ts';
 import type { GameAction, GameCommandResult } from '../types/action.ts';
 
-export function createGamesService(runners: RunnerRegistry) {
+export function createGamesService(runners: RunnerRegistry, registrations?: AgentRegistrations) {
   return {
     list(accountId: number): PlayerCatalog {
       const snapshot = runners.read()?.snapshot;
@@ -47,7 +49,33 @@ export function createGamesService(runners: RunnerRegistry) {
         return 'not-found';
       }
 
-      const sent = await runners.send({ version: 3, profileId, gameId, ...action });
+      if (action.type === 'stop') {
+        const sent = await runners.send({ version: 4, profileId, gameId, ...action });
+        return sent ? 'accepted' : 'unavailable';
+      }
+
+      if (
+        snapshot.containers.some(
+          (container) =>
+            container.profileId === profileId &&
+            container.gameId === gameId &&
+            container.state !== 'failed',
+        )
+      )
+        return 'accepted';
+
+      const instanceId = randomUUID();
+      const agent = registrations?.issue(instanceId, profileId, gameId);
+      if (agent === null) return 'accepted';
+      const sent = await runners.send({
+        version: 4,
+        type: 'play',
+        profileId,
+        gameId,
+        instanceId,
+        ...(agent && { agent }),
+      });
+      if (!sent) registrations?.revoke(instanceId);
       return sent ? 'accepted' : 'unavailable';
     },
   };

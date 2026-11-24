@@ -6,7 +6,7 @@ import type {
 
 type CommandSender = (command: RunnerCommand) => Promise<boolean>;
 
-export function createRunnerRegistry(id?: string) {
+export function createRunnerRegistry(id?: string, observe?: (snapshot: RunnerSnapshot) => void) {
   let snapshot: RunnerSnapshot | null = null;
   let sendCommand: CommandSender | undefined;
 
@@ -22,6 +22,7 @@ export function createRunnerRegistry(id?: string) {
     },
     update(next: RunnerSnapshot) {
       snapshot = next;
+      observe?.(next);
     },
     disconnect() {
       snapshot = null;

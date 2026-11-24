@@ -2,9 +2,9 @@
 
 The runner connects to `/api/runners/connect` with its token in an `Authorization: Bearer` header. Use a loopback `ws://` URL for local development and a `wss://` URL for remote deployments. The session service accepts one active connection for its configured runner.
 
-Protocol version 3 uses JSON in both directions. The service sends `play` and `stop` commands with a profile ID and game ID. Stop also includes the exact instance ID. The runner publishes a full `snapshot` on connect and after each state change. The snapshot contains the catalog and profile-owned instances in `starting`, `running`, `stopping`, or `failed` state. An instance can include a short error message. The service validates and filters the snapshot before serving player requests.
+Protocol version 4 uses JSON in both directions. The service sends `play` and `stop` commands with a profile, game, and instance ID. The session service assigns the instance ID on Play. On the private bridge, Play also carries the agent registration URL and a one-time token. The runner passes these into the new container and keeps the token out of its snapshots and Docker command arguments. The runner publishes a full `snapshot` on connect and after each state change. The snapshot contains the catalog and profile-owned instances in `starting`, `running`, `stopping`, or `failed` state. An instance can include a short error message. The service validates and filters the snapshot before serving player requests.
 
-Shared TypeScript types live in [the repository protocol directory](../../protocol/runner.ts). Upgrade the API and runner together when switching to v3.
+Shared TypeScript types live in [the repository protocol directory](../../protocol/runner.ts). Upgrade the API and runner together when switching to v4.
 
 The runner is online once a snapshot is accepted. Disconnecting clears the snapshot. WebSocket ping and pong frames detect dead connections. The runner retries transient failures with delays from 1 to 30 seconds and exits when its credentials are rejected.
 

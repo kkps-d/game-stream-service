@@ -41,7 +41,7 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
 
   if (
     !isRecord(value) ||
-    value.version !== 3 ||
+    value.version !== 4 ||
     value.type !== 'snapshot' ||
     !Array.isArray(value.games) ||
     !value.games.every(isGame) ||
@@ -70,5 +70,5 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
     return null;
   }
 
-  return { version: 3, type: 'snapshot', games, containers };
+  return { version: 4, type: 'snapshot', games, containers };
 }

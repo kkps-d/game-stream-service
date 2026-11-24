@@ -21,7 +21,7 @@ Passport Local verifies username/password credentials against Argon2id hashes. E
 
 The API binds to `127.0.0.1:3100` by default. Set `API_PORT` in `.env` to change the port for the API and both Vite proxies. Run `npm run start:api` to start without file watching.
 
-Set `AGENT_BIND_ADDRESS` to the private Docker bridge gateway to enable an additional listener on `API_PORT`. It serves only `GET /api/health` for the networking check. See the [local startup order](../../game-container-runner/README.md#local-streaming-network).
+Set `AGENT_BIND_ADDRESS` to the private Docker bridge gateway to enable an additional listener on `API_PORT`. It serves `GET /api/health` and accepts agent WebSocket upgrades at `/api/agents/connect/:instanceId`. Play issues a bearer token for that instance and player. The token expires after two minutes and can register one connection. The service closes the connection when the runner reports the instance stopping, failing, or gone. See the [local startup order](../../game-container-runner/README.md#local-streaming-network).
 
 ## Runner connection
 

@@ -13,17 +13,23 @@ export interface RunnerContainer {
   error?: string;
 }
 
+export interface AgentLaunch {
+  url: string;
+  token: string;
+}
+
 interface RunnerCommandTarget {
-  version: 3;
+  version: 4;
   profileId: string;
   gameId: string;
+  instanceId: string;
 }
 
 export type RunnerCommand = RunnerCommandTarget &
-  ({ type: 'play' } | { type: 'stop'; instanceId: string });
+  ({ type: 'play'; agent?: AgentLaunch } | { type: 'stop' });
 
 export interface RunnerSnapshot {
-  version: 3;
+  version: 4;
   type: 'snapshot';
   games: RunnerGame[];
   containers: RunnerContainer[];

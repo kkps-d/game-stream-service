@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { setImmediate as idle } from 'node:timers/promises';
 import type { RunnerCommand } from '../../../../../protocol/runner.ts';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
 import { createGameInstances } from './instances.ts';
 
-const play = { version: 3, type: 'play', gameId: 'openarena', profileId: 'user-1' } as const;
+const target = { version: 4, gameId: 'openarena', profileId: 'user-1' } as const;
+function play() {
+  return { ...target, type: 'play', instanceId: randomUUID() } as const;
+}
 
-function stop(instanceId: string, profileId: string = play.profileId): RunnerCommand {
-  return { ...play, type: 'stop', profileId, instanceId };
+function stop(instanceId: string, profileId: string = target.profileId): RunnerCommand {
+  return { ...target, type: 'stop', profileId, instanceId };
 }
 
 function fakeDocker() {
@@ -55,10 +59,12 @@ await test('deduplicates Play, cancels startup and ignores stale or foreign Stop
   const runner = createGameInstances(docker);
   await runner.reconcile();
 
-  runner.dispatch(play);
+  const command = play();
+  runner.dispatch(command);
   const first = runner.snapshot()!.containers[0];
   assert.equal(first.state, 'starting');
-  runner.dispatch(play);
+  assert.equal(first.id, command.instanceId);
+  runner.dispatch(play());
   runner.dispatch(stop(first.id));
   assert.equal(runner.snapshot()!.containers[0].state, 'stopping');
   release.resolve();
@@ -68,12 +74,12 @@ await test('deduplicates Play, cancels startup and ignores stale or foreign Stop
   assert.deepEqual(removed, ['docker-' + first.id]);
   assert.deepEqual(runner.snapshot()!.containers, []);
 
-  runner.dispatch(play);
+  runner.dispatch(play());
   const second = runner.snapshot()!.containers[0];
   assert.notEqual(second.id, first.id);
   runner.dispatch(stop(first.id));
   runner.dispatch(stop(second.id, 'user-2'));
-  runner.dispatch({ ...play, profileId: 'user-2' });
+  runner.dispatch({ ...play(), profileId: 'user-2' });
   await idle();
   await runner.reconcile();
   assert.deepEqual(
@@ -86,7 +92,7 @@ await test('deduplicates Play, cancels startup and ignores stale or foreign Stop
     runner.snapshot()!.containers.map(({ state }) => state),
     ['running', 'running'],
   );
-  runner.dispatch(play);
+  runner.dispatch(play());
   runner.dispatch(stop(second.id));
   await idle();
   assert.equal(created.length, 3);
@@ -101,7 +107,7 @@ await test('recovers live containers after restart and tracks Docker outages, ex
   const { docker, containers, started, ready } = fakeDocker();
   const first = createGameInstances(docker);
   await first.reconcile();
-  first.dispatch(play);
+  first.dispatch(play());
   await idle();
   ready.add(started[0]);
   await first.reconcile();
@@ -135,7 +141,7 @@ await test('reports launch and readiness failures and allows a fresh instance on
   };
   const runner = createGameInstances(docker, 0);
   await runner.reconcile();
-  runner.dispatch(play);
+  runner.dispatch(play());
   await idle();
   await runner.reconcile();
 
@@ -148,7 +154,7 @@ await test('reports launch and readiness failures and allows a fresh instance on
     },
   );
   docker.create = create;
-  runner.dispatch(play);
+  runner.dispatch(play());
   await idle();
   await runner.reconcile();
   const timeout = runner.snapshot()!.containers[0];
@@ -156,7 +162,7 @@ await test('reports launch and readiness failures and allows a fresh instance on
   assert.equal(timeout.state, 'failed');
   assert.match(timeout.error ?? '', /did not become ready/);
 
-  runner.dispatch(play);
+  runner.dispatch(play());
   await idle();
   assert.equal(created.length, 2);
   assert.deepEqual(removed, ['docker-' + timeout.id]);

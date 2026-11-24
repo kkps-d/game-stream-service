@@ -17,8 +17,8 @@ interface ContainerInfo {
   State: { Status: string; StartedAt: string; Running: boolean };
 }
 
-async function docker(args: string[], timeout = 10_000) {
-  const { stdout } = await exec('docker', args, { timeout });
+async function docker(args: string[], timeout = 10_000, env?: NodeJS.ProcessEnv) {
+  const { stdout } = await exec('docker', args, { timeout, env });
   return stdout.trim();
 }
 
@@ -113,8 +113,11 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
       });
     },
 
-    async create(game) {
+    async create(game, launch) {
       const containerName = name(game);
+      const agent = network === 'none' ? undefined : launch;
+      // Pass the secret through the Docker CLI environment to keep it out of its command line.
+      const env = agent ? { ...process.env, GAME_STREAM_LAUNCH_TOKEN: agent.token } : undefined;
       try {
         return await docker(
           [
@@ -143,11 +146,15 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
             `CONTAINERZ_AGENT_PORT=${agentPort}`,
             '--env',
             'CONTAINERZ_AGENT_BIND_ADDRESS=127.0.0.1',
+            ...(agent
+              ? ['--env', `GAME_STREAM_AGENT_URL=${agent.url}`, '--env', 'GAME_STREAM_LAUNCH_TOKEN']
+              : []),
             '--mount',
             `type=volume,src=${containerName}-saves,dst=/home/player/.openarena`,
             image,
           ],
           30_000,
+          env,
         );
       } catch (error) {
         // The daemon may have created the container even if the CLI timed out.

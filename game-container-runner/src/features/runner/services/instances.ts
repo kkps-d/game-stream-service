@@ -1,7 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
-import type { RunnerCommand, RunnerContainer } from '../../../../../protocol/runner.ts';
+import type {
+  AgentLaunch,
+  RunnerCommand,
+  RunnerContainer,
+} from '../../../../../protocol/runner.ts';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
 import { catalog, createSnapshot } from './snapshot.ts';
 
@@ -52,7 +55,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
     publish();
   }
 
-  async function start(key: string, entry: Entry) {
+  async function start(key: string, entry: Entry, agent?: AgentLaunch) {
     const isStopping = () => entry.view.state === 'stopping';
     try {
       if (entry.dockerId) {
@@ -60,7 +63,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
         entry.dockerId = undefined;
       }
       if (!isStopping()) {
-        entry.dockerId = await docker.create(entry.view);
+        entry.dockerId = await docker.create(entry.view, agent);
         if (!isStopping()) await docker.start(entry.dockerId);
       }
     } catch (error) {
@@ -176,7 +179,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
         if (current && (current.busy || current.view.state !== 'failed')) return;
         const entry: Entry = {
           view: {
-            id: randomUUID(),
+            id: command.instanceId,
             gameId: command.gameId,
             profileId: command.profileId,
             state: 'starting',
@@ -186,7 +189,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
         };
         entries.set(key, entry);
         publish();
-        void start(key, entry);
+        void start(key, entry, command.agent);
         return;
       }
 

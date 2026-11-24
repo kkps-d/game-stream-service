@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -12,6 +13,8 @@ import { isDeepStrictEqual } from 'node:util';
 import WebSocket from 'ws';
 import type { RunnerSnapshot, RunnerStatus } from '../../protocol/runner.ts';
 import { openDatabase } from './database.ts';
+import { createAgentServer } from './features/agent/controller/http.ts';
+import { createAgentRegistrations } from './features/agent/services/registrations.ts';
 import { createAccount } from './features/auth/services/accounts.ts';
 import { attachRunnerWebSocket } from './features/runner/controller/websocket.ts';
 import { createRunnerRegistry } from './features/runner/services/status.ts';
@@ -21,7 +24,7 @@ const origin = 'http://localhost:5180';
 const token = 'runner-test-token-with-enough-characters';
 const password = 'test-account-password';
 const snapshot: RunnerSnapshot = {
-  version: 3,
+  version: 4,
   type: 'snapshot',
   games: [{ id: 'openarena', title: 'OpenArena' }],
   containers: [],
@@ -56,18 +59,25 @@ await test(
     );
 
     const database = openDatabase(filename);
-    const server = await createSessionServer(database.db, {
-      sessionSecret: 'test-secret-test-secret-test-secret',
-      origins: new Set([origin]),
-      secureCookies: false,
-      runner: { id: 'local', token },
-    });
+    const registrations = createAgentRegistrations(new URL('ws://127.0.0.1'));
+    const agentServer = createAgentServer(registrations);
+    const server = await createSessionServer(
+      database.db,
+      {
+        sessionSecret: 'test-secret-test-secret-test-secret',
+        origins: new Set([origin]),
+        secureCookies: false,
+        runner: { id: 'local', token },
+      },
+      registrations,
+    );
 
     const clients = new Set<WebSocket>();
     cleanup = async () => {
       try {
         for (const socket of clients) socket.terminate();
         await new Promise<void>((resolve) => server.close(() => resolve()));
+        await new Promise<void>((resolve) => agentServer.close(() => resolve()));
         database.close();
       } finally {
         removeDirectory();
@@ -78,6 +88,11 @@ await test(
     const address = server.address();
     assert(address && typeof address !== 'string');
     const { port } = address;
+    agentServer.listen(0, '127.0.0.1');
+    await once(agentServer, 'listening');
+    const agentAddress = agentServer.address();
+    assert(agentAddress && typeof agentAddress !== 'string');
+    const { port: agentPort } = agentAddress;
 
     await createAccount(database.db, 'player', password, 'user');
     await createAccount(database.db, 'operator', password, 'admin');
@@ -165,8 +180,12 @@ await test(
     const playCommand = once(first, 'message');
     assert.equal((await games(player, '/openarena/play', { profileId: 'user-3' })).status, 202);
     const [playMessage] = await playCommand;
-    assert.deepEqual(JSON.parse(playMessage.toString()), {
-      version: 3,
+    const { instanceId, agent, ...command } = JSON.parse(playMessage.toString());
+    assert.match(instanceId, /^[a-f0-9-]{36}$/);
+    assert.equal(agent.url, `ws://127.0.0.1/api/agents/connect/${instanceId}`);
+    assert.match(agent.token, /^[a-f0-9]{64}$/);
+    assert.deepEqual(command, {
+      version: 4,
       type: 'play',
       profileId: 'user-1',
       gameId: 'openarena',
@@ -174,9 +193,7 @@ await test(
 
     const playing: RunnerSnapshot = {
       ...snapshot,
-      containers: [
-        { id: 'player-instance', gameId: 'openarena', profileId: 'user-1', state: 'starting' },
-      ],
+      containers: [{ id: instanceId, gameId: 'openarena', profileId: 'user-1', state: 'starting' }],
     };
     first.send(JSON.stringify(playing));
     await waitForStatus(status, { id: 'local', online: true, snapshot: playing });
@@ -186,7 +203,7 @@ await test(
         {
           id: 'openarena',
           title: 'OpenArena',
-          instance: { id: 'player-instance', state: 'starting' },
+          instance: { id: instanceId, state: 'starting' },
         },
       ],
     });
@@ -194,25 +211,52 @@ await test(
       runnerOnline: true,
       games: [{ id: 'openarena', title: 'OpenArena', instance: null }],
     });
-    assert.equal(
-      (await games(other, '/openarena/stop', { instanceId: 'player-instance' })).status,
-      404,
-    );
+    assert.equal((await games(other, '/openarena/stop', { instanceId })).status, 404);
     assert.equal((await games(player, '/openarena/stop', { instanceId: 'old' })).status, 404);
 
+    function connectAgent(id: string, bearer: string) {
+      const connection = new WebSocket(`ws://127.0.0.1:${agentPort}/api/agents/connect/${id}`, {
+        headers: { Authorization: `Bearer ${bearer}` },
+      });
+      clients.add(connection);
+      connection.once('close', () => clients.delete(connection));
+      return connection;
+    }
+
+    for (const [id, bearer] of [
+      [randomUUID(), agent.token],
+      [instanceId, '0'.repeat(64)],
+    ]) {
+      const rejected = connectAgent(id, bearer);
+      const [error] = (await once(rejected, 'error')) as [Error];
+      assert.match(error.message, /Unexpected server response: 401/);
+    }
+    const activeAgent = connectAgent(instanceId, agent.token);
+    await once(activeAgent, 'open');
+    const replay = connectAgent(instanceId, agent.token);
+    const [replayError] = (await once(replay, 'error')) as [Error];
+    assert.match(replayError.message, /Unexpected server response: 401/);
+
     const stopCommand = once(first, 'message');
-    assert.equal(
-      (await games(player, '/openarena/stop', { instanceId: 'player-instance' })).status,
-      202,
-    );
+    assert.equal((await games(player, '/openarena/stop', { instanceId })).status, 202);
     const [stopMessage] = await stopCommand;
     assert.deepEqual(JSON.parse(stopMessage.toString()), {
-      version: 3,
+      version: 4,
       type: 'stop',
       profileId: 'user-1',
       gameId: 'openarena',
-      instanceId: 'player-instance',
+      instanceId,
     });
+
+    const agentClosed = once(activeAgent, 'close');
+    first.send(
+      JSON.stringify({
+        ...playing,
+        containers: [{ ...playing.containers[0], state: 'stopping' }],
+      }),
+    );
+    const [agentCloseCode] = await agentClosed;
+    assert.equal(agentCloseCode, 1000);
 
     const invalidClosed = once(first, 'close');
     first.send(JSON.stringify({ ...snapshot, version: 1 }));
