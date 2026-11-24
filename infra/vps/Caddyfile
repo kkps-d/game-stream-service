@@ -1,0 +1,12 @@
+{$SITE_DOMAIN} {
+	@backend path /api /api/* /viewer /viewer/*
+	handle @backend {
+		reverse_proxy 127.0.0.1:{$API_PORT}
+	}
+
+	handle {
+		root * /srv/player
+		try_files {path} /index.html
+		file_server
+	}
+}

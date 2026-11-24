@@ -10,7 +10,7 @@
 
 ## Internet testing
 
-- [ ] Serve the player panel, viewer, and session service over HTTPS on a VPS. Accept authenticated runner and agent WebSockets over WSS.
+- [ ] Deploy the [VPS stack](infra/vps/README.md) and verify HTTPS and runner WSS on its public hostname. Add secure WSS registration for game agents.
 - [ ] Give game containers outbound access to the VPS registration endpoint and public TURN relay. Keep game ports unpublished.
 - [ ] Configure VPS coturn with a reachable public relay address and open its listener and UDP relay port range.
 - [ ] Verify OpenArena playback, audio, input, reconnect, and Stop from a browser on a separate network.
