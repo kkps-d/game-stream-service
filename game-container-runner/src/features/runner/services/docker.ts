@@ -25,14 +25,14 @@ async function docker(args: string[], timeout = 10_000, env?: NodeJS.ProcessEnv)
   return stdout.trim();
 }
 
-export async function resolveDockerNetwork(name?: string): Promise<string> {
+export async function resolveDockerNetwork(name?: string, vps = false): Promise<string> {
   if (!name) return 'none';
 
   const details = await docker([
     'network',
     'inspect',
     '--format',
-    '{{.Driver}} {{.Internal}} {{.ID}}',
+    '{{.Driver}} {{.Internal}} {{.ID}} {{index .Options "com.docker.network.bridge.name"}} {{.EnableIPv6}}',
     name,
   ]).catch((error: unknown) => {
     throw new Error(
@@ -40,8 +40,18 @@ export async function resolveDockerNetwork(name?: string): Promise<string> {
       { cause: error },
     );
   });
-  const [driver, internal, id] = details.split(' ');
-  if (driver !== 'bridge' || internal !== 'true' || !id) {
+  const [driver, internal, id, bridgeName, ipv6] = details.split(' ');
+  if (vps) {
+    if (
+      driver !== 'bridge' ||
+      internal !== 'false' ||
+      !id ||
+      bridgeName !== 'br-game-vps' ||
+      ipv6 !== 'false'
+    ) {
+      throw new Error('VPS games require the IPv4 Docker bridge br-game-vps.');
+    }
+  } else if (driver !== 'bridge' || internal !== 'true' || !id) {
     throw new Error(`RUNNER_DOCKER_NETWORK=${name} must be an internal Docker bridge.`);
   }
   return id;
@@ -70,6 +80,7 @@ export function createDocker(
   gpuArgs: string[],
   network: string,
   holocureGameDir?: string,
+  vps?: { ip: string; origin: string },
 ): GameDocker {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
@@ -148,6 +159,14 @@ export function createDocker(
 
       const containerName = name(game);
       const agent = network === 'none' ? undefined : launch;
+      if (vps) {
+        const endpoint = agent && new URL(agent.url);
+        if (!endpoint || endpoint.origin !== vps.origin) {
+          throw new Error('Agent registration must use the configured VPS origin.');
+        }
+        // Pin DNS to the firewall's destination while TLS still verifies the hostname.
+        gameArgs.push('--add-host', `${endpoint.hostname}:${vps.ip}`, '--dns', '127.0.0.1');
+      }
       // Pass the secret through the Docker CLI environment to keep it out of its command line.
       const env = agent ? { ...process.env, GAME_STREAM_LAUNCH_TOKEN: agent.token } : undefined;
       try {

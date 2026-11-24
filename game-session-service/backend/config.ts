@@ -38,8 +38,34 @@ export function readConfig() {
     );
   }
 
+  const publicOrigin = process.env.AGENT_PUBLIC_ORIGIN?.trim();
+  const agentPublicOrigin = publicOrigin ? URL.parse(publicOrigin) : undefined;
+  if (
+    publicOrigin &&
+    (!agentPublicOrigin ||
+      agentPublicOrigin.protocol !== 'wss:' ||
+      !agentPublicOrigin.hostname ||
+      agentPublicOrigin.username ||
+      agentPublicOrigin.password ||
+      agentPublicOrigin.pathname !== '/' ||
+      publicOrigin.includes('?') ||
+      publicOrigin.includes('#') ||
+      agentBindAddress)
+  ) {
+    throw new Error('Set AGENT_PUBLIC_ORIGIN to a WSS origin and leave AGENT_BIND_ADDRESS unset.');
+  }
+  const agentApiPort = Number(process.env.AGENT_API_PORT || 3101);
+  if (
+    agentPublicOrigin &&
+    (!Number.isInteger(agentApiPort) || agentApiPort < 1 || agentApiPort > 65535)
+  ) {
+    throw new Error('Set AGENT_API_PORT to a valid loopback port.');
+  }
+
   return {
     sessionSecret,
+    agentPublicOrigin: agentPublicOrigin ?? undefined,
+    agentApiPort,
     agentBindAddress,
     viewerDir: process.env.GAME_VIEWER_DIR
       ? resolve(serviceRoot, process.env.GAME_VIEWER_DIR)

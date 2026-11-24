@@ -1,3 +1,4 @@
+import { isIPv4 } from 'node:net';
 import type { RunnerConfig } from '../types/connection.ts';
 
 export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
@@ -5,6 +6,7 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
   gpuPci: string;
   dockerNetwork?: string;
   holocureGameDir?: string;
+  vps?: { ip: string; origin: string };
 } {
   const url = URL.parse(env.RUNNER_WS_URL ?? '');
   const loopback = url && ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
@@ -34,5 +36,12 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
     throw new Error('Set RUNNER_DOCKER_NETWORK to a valid Docker network name.');
   }
   const holocureGameDir = env.HOLOCURE_GAME_DIR?.trim() || undefined;
-  return { url, token, runnerId, gpuPci, dockerNetwork, holocureGameDir };
+  const vpsIp = env.RUNNER_VPS_IP?.trim();
+  if (vpsIp && (!isIPv4(vpsIp) || url.protocol !== 'wss:' || !dockerNetwork)) {
+    throw new Error(
+      'Set RUNNER_VPS_IP to the VPS IPv4 with a WSS runner URL and dedicated Docker network.',
+    );
+  }
+  const vps = vpsIp ? { ip: vpsIp, origin: url.origin } : undefined;
+  return { url, token, runnerId, gpuPci, dockerNetwork, holocureGameDir, vps };
 }

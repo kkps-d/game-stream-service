@@ -1,3 +1,4 @@
+import { isIPv4 } from 'node:net';
 import type { RunnerCommand } from '../../../../../protocol/runner.ts';
 
 export function parseCommand(text: string): RunnerCommand | null {
@@ -26,14 +27,20 @@ export function parseCommand(text: string): RunnerCommand | null {
   if (agent === undefined) return { version, type, gameId, profileId, instanceId };
   if (typeof agent !== 'object' || !agent) return null;
   const { url, token } = agent as Record<string, unknown>;
-  const endpoint = typeof url === 'string' ? URL.parse(url) : null;
+  if (typeof url !== 'string') return null;
+  const endpoint = URL.parse(url);
+  const privateIpv4 =
+    endpoint &&
+    isIPv4(endpoint.hostname) &&
+    /^(?:127\.|10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/.test(endpoint.hostname);
   if (
     !endpoint ||
-    endpoint.protocol !== 'ws:' ||
+    (endpoint.protocol !== 'wss:' && !(endpoint.protocol === 'ws:' && privateIpv4)) ||
+    !endpoint.hostname ||
     endpoint.username ||
     endpoint.password ||
-    endpoint.search ||
-    endpoint.hash ||
+    url.includes('?') ||
+    url.includes('#') ||
     endpoint.pathname !== `/api/agents/connect/${instanceId}` ||
     typeof token !== 'string' ||
     !/^[a-f0-9]{64}$/.test(token)

@@ -7,9 +7,15 @@ import { createGameInstances } from './features/runner/services/instances.ts';
 
 try {
   const config = readConfig(process.env);
-  const network = await resolveDockerNetwork(config.dockerNetwork);
+  const network = await resolveDockerNetwork(config.dockerNetwork, !!config.vps);
   const instances = createGameInstances(
-    createDocker(config.runnerId, await resolveGpu(config.gpuPci), network, config.holocureGameDir),
+    createDocker(
+      config.runnerId,
+      await resolveGpu(config.gpuPci),
+      network,
+      config.holocureGameDir,
+      config.vps,
+    ),
   );
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());

@@ -10,7 +10,7 @@
 
 ## Internet testing
 
-- [ ] Deploy the [VPS stack](infra/vps/README.md) and verify HTTPS and runner WSS on its public hostname. Add secure WSS registration for game agents.
-- [ ] Give game containers outbound access to the VPS registration endpoint and public TURN relay. Keep game ports unpublished.
+- [ ] Deploy the [VPS stack](infra/vps/README.md) and verify HTTPS and WSS on its public hostname.
+- [ ] Apply the dedicated game bridge policy on the game host and verify outbound connectivity to the VPS.
 - [ ] Configure VPS coturn with a reachable public relay address and open its listener and UDP relay port range.
 - [ ] Verify OpenArena playback, audio, input, reconnect, and Stop from a browser on a separate network.

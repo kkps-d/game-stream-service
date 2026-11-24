@@ -7,6 +7,7 @@ import { runRunner } from '../services/connection.ts';
 import { createSnapshot } from '../services/snapshot.ts';
 import type { RunnerControl } from '../types/connection.ts';
 import { readConfig } from './config.ts';
+import { parseCommand } from '../services/command.ts';
 import { connectRunner } from './websocket.ts';
 
 const token = 'runner-test-token-with-enough-characters';
@@ -128,4 +129,26 @@ await test('requires a secure WebSocket URL outside loopback', () => {
       readConfig({ RUNNER_WS_URL: 'ws://games.example/api/runners/connect', RUNNER_TOKEN: token }),
     /WSS endpoint or a loopback WS endpoint/,
   );
+});
+
+await test('accepts public WSS and private IPv4 WS for agent commands', () => {
+  const instanceId = '0b2b2c00-ec49-4f1e-b048-23ee20c50cae';
+  const path = `/api/agents/connect/${instanceId}`;
+  const command = (url: string) =>
+    parseCommand(
+      JSON.stringify({
+        version: 4,
+        type: 'play',
+        gameId: 'openarena',
+        profileId: 'user-1',
+        instanceId,
+        agent: { url, token: 'a'.repeat(64) },
+      }),
+    );
+  assert.equal(command('wss://games.example' + path)?.type, 'play');
+  assert.equal(command('ws://172.30.42.1:3100' + path)?.type, 'play');
+  assert.equal(command('ws://games.example' + path), null);
+  assert.equal(command('wss://games.example' + path + '?'), null);
+  assert.equal(command('wss://games.example' + path + '#'), null);
+  assert.equal(command('wss://games.example/api/agents/connect/wrong'), null);
 });

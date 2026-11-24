@@ -1,0 +1,18 @@
+table inet game_stream_vps
+flush table inet game_stream_vps
+
+table inet game_stream_vps {
+	chain input {
+		type filter hook input priority -10; policy accept;
+		iifname "br-game-vps" counter drop
+	}
+
+	chain forward {
+		type filter hook forward priority -10; policy accept;
+		iifname "br-game-vps" ip daddr $vps_ip tcp dport 443 accept
+		iifname "br-game-vps" ip daddr $vps_ip udp dport { 3478, 49160-49200 } accept
+		iifname "br-game-vps" counter drop
+		oifname "br-game-vps" ct state established,related accept
+		oifname "br-game-vps" counter drop
+	}
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=Game session service
+After=network.target
+
+[Service]
+User=game-stream
+Group=game-stream
+WorkingDirectory=/opt/game-stream-service/current/game-session-service
+EnvironmentFile=/etc/game-stream-service/session.env
+ExecStart=/opt/node24/bin/node backend/server.ts
+Restart=on-failure
+RestartSec=3s
+StateDirectory=game-stream-service
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
