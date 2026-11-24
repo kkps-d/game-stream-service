@@ -14,6 +14,15 @@ Set the same `RUNNER_ID` in both services. Set `RUNNER_GPU_PCI` to the game host
 
 OpenArena becomes **Running** when the bundled agent responds inside the container. **Stop** removes the container while keeping the player's named save volume at `/home/player/.openarena`. Restarting the runner recovers existing games from Docker.
 
+## Local streaming network
+
+1. Start [coturn](../infra/coturn/README.md) to create the internal bridge.
+2. Set `AGENT_BIND_ADDRESS=172.30.42.1` in the session service's `.env` and start the API. If you changed the coturn subnet, use the gateway shown by `docker network inspect game-stream-coturn_relay`.
+3. Set `RUNNER_DOCKER_NETWORK=game-stream-coturn_relay` in the runner's `.env` and start the runner. Use the project's actual network name if you customized the Compose project name.
+4. Start the player panel and select **Play**. Use **Stop** before taking down the coturn stack.
+
+The runner checks the internal bridge at startup. Restart it if you recreate the bridge. Leave `RUNNER_DOCKER_NETWORK` unset to launch games with `--network none`. OpenArena's agent continues to listen on loopback inside the container.
+
 ## Development
 
 Run `npm run lint`, `npm run check`, and `npm test`. Use `npm run dev` for file watching and `npm run format` after editing. See the [runner protocol](docs/protocol.md) for connection and status behavior.

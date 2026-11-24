@@ -22,6 +22,28 @@ async function docker(args: string[], timeout = 10_000) {
   return stdout.trim();
 }
 
+export async function resolveDockerNetwork(name?: string): Promise<string> {
+  if (!name) return 'none';
+
+  const details = await docker([
+    'network',
+    'inspect',
+    '--format',
+    '{{.Driver}} {{.Internal}} {{.ID}}',
+    name,
+  ]).catch((error: unknown) => {
+    throw new Error(
+      `Could not inspect RUNNER_DOCKER_NETWORK=${name}. Check that Docker is reachable and the network exists.`,
+      { cause: error },
+    );
+  });
+  const [driver, internal, id] = details.split(' ');
+  if (driver !== 'bridge' || internal !== 'true' || !id) {
+    throw new Error(`RUNNER_DOCKER_NETWORK=${name} must be an internal Docker bridge.`);
+  }
+  return id;
+}
+
 function containerMissing(error: unknown) {
   const failure = error as { stderr?: string };
   return (
@@ -40,7 +62,7 @@ async function inspect(id: string): Promise<ContainerInfo | null> {
   }
 }
 
-export function createDocker(runnerId: string, gpuArgs: string[]): GameDocker {
+export function createDocker(runnerId: string, gpuArgs: string[], network: string): GameDocker {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
     `game-stream-${runnerId}-${game.profileId}-${game.gameId}`;
@@ -103,7 +125,7 @@ export function createDocker(runnerId: string, gpuArgs: string[]): GameDocker {
             '--pull',
             'never',
             '--network',
-            'none',
+            network,
             '--stop-timeout',
             '15',
             '--ulimit',

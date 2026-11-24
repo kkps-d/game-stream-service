@@ -1,14 +1,15 @@
 import { readConfig } from './features/runner/controller/config.ts';
 import { connectRunner } from './features/runner/controller/websocket.ts';
 import { runRunner } from './features/runner/services/connection.ts';
-import { createDocker } from './features/runner/services/docker.ts';
+import { createDocker, resolveDockerNetwork } from './features/runner/services/docker.ts';
 import { resolveGpu } from './features/runner/services/gpu.ts';
 import { createGameInstances } from './features/runner/services/instances.ts';
 
 try {
   const config = readConfig(process.env);
+  const network = await resolveDockerNetwork(config.dockerNetwork);
   const instances = createGameInstances(
-    createDocker(config.runnerId, await resolveGpu(config.gpuPci)),
+    createDocker(config.runnerId, await resolveGpu(config.gpuPci), network),
   );
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());

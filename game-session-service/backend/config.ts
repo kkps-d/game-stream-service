@@ -1,3 +1,4 @@
+import { isIPv4 } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { adminPort, playerPort } from '../ports.ts';
 import { resolveDatabasePath } from './database-path.ts';
@@ -23,8 +24,21 @@ export function readConfig() {
     throw new Error('Set SESSION_SECRET to a random value of at least 32 bytes.');
   }
 
+  const agentBindAddress = process.env.AGENT_BIND_ADDRESS?.trim() || undefined;
+  if (
+    agentBindAddress &&
+    (!isIPv4(agentBindAddress) ||
+      agentBindAddress === '0.0.0.0' ||
+      agentBindAddress.startsWith('127.'))
+  ) {
+    throw new Error(
+      'Set AGENT_BIND_ADDRESS to the IPv4 address of the private Docker bridge gateway.',
+    );
+  }
+
   return {
     sessionSecret,
+    agentBindAddress,
     runner: readRunnerConfig(),
     secureCookies: process.env.NODE_ENV === 'production',
     origins: new Set(

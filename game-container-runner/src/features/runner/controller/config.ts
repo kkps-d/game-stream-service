@@ -2,7 +2,7 @@ import type { RunnerConfig } from '../types/connection.ts';
 
 export function readConfig(
   env: NodeJS.ProcessEnv,
-): RunnerConfig & { runnerId: string; gpuPci: string } {
+): RunnerConfig & { runnerId: string; gpuPci: string; dockerNetwork?: string } {
   const url = URL.parse(env.RUNNER_WS_URL ?? '');
   const loopback = url && ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
   if (
@@ -26,5 +26,9 @@ export function readConfig(
   if (!gpuPci || !/^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]$/.test(gpuPci)) {
     throw new Error('Set RUNNER_GPU_PCI to the game host GPU’s PCI address.');
   }
-  return { url, token, runnerId, gpuPci };
+  const dockerNetwork = env.RUNNER_DOCKER_NETWORK?.trim() || undefined;
+  if (dockerNetwork && !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(dockerNetwork)) {
+    throw new Error('Set RUNNER_DOCKER_NETWORK to a valid Docker network name.');
+  }
+  return { url, token, runnerId, gpuPci, dockerNetwork };
 }
