@@ -15,8 +15,10 @@ install -d -m 700 local
   { cat turnserver.conf.example; printf 'static-auth-secret=%s\n' "$secret"; } > local/turnserver.conf
 )
 docker compose config --quiet
-docker compose up -d
+bash start.sh
 ```
+
+The startup script adds a return route inside coturn for the host’s primary IPv4 address. Firefox can send UDP from that address even when the panel is on localhost. If Firefox uses another interface, pass its local IPv4 address to `bash start.sh`. Run the script again after restarting coturn to restore the route.
 
 The TURN URL is `turn:172.30.42.2:3478?transport=udp`. The UDP relay ports are `49160–49200`. If the subnet overlaps a host or Docker route, set `TURN_SUBNET`, `TURN_IP`, and `SMOKE_PEER_IP` in a local `.env`. Use distinct addresses in the new subnet for coturn and the test peer.
 

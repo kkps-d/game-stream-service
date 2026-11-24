@@ -13,3 +13,4 @@
 - Added agent registration over the private bridge with one-time, instance-bound launch tokens. Verified registration and teardown with the rebuilt OpenArena image and tested invalid, expired, and replayed tokens.
 - Added owner-only stream signaling and short-lived TURN credentials. The registered agent uses relay-only ICE for game streams.
 - Integrated the standalone viewer into the player panel. Verified 720p OpenArena video, non-silent audio, and keyboard and mouse control over TURN, denial for a second account, and viewer teardown on Stop.
+- Restored local Firefox streaming by adding a host-only return route inside coturn. Verified initial playback and reconnection in Firefox.
