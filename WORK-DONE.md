@@ -15,3 +15,4 @@
 - Integrated the standalone viewer into the player panel. Verified 720p OpenArena video, non-silent audio, and keyboard and mouse control over TURN, denial for a second account, and viewer teardown on Stop.
 - Restored local Firefox streaming by adding a host-only return route inside coturn. Verified initial playback and reconnection in Firefox.
 - Made a clean OpenArena quit return to Idle and preserve saves. Verified real in-game Quit, relaunch, and a failed container exit in Firefox.
+- Added Minecraft 26.3, Minecraft 1.21.11, and HoloCure to the player catalog with icons and separate save volumes for each game. Verified local streaming and Stop in Firefox.

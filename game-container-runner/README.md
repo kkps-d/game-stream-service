@@ -1,6 +1,6 @@
 # Game container runner
 
-The runner connects from the game host to the game session service. It runs one OpenArena container per player and reports game state to the session service.
+The runner connects from the game host to the game session service. It runs one container per player per game and reports game state to the session service.
 
 ## Setup
 
@@ -10,17 +10,33 @@ Use Node.js 24.2+ in the 24.x series and a native Linux Docker host with the loc
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-Set the same `RUNNER_ID` in both services. Set `RUNNER_GPU_PCI` to the game host GPU's PCI address from `/dev/dri/by-path`, for example `0000:01:00.0`. The runner uses NVIDIA CDI or AMD DRM device mappings. Start the session API, then run `npm start` here. The example WebSocket URL uses the default local API port. Sign in to the player panel and use **Play** or **Stop** on OpenArena. Sign in to the admin panel and open `/api/admin/runner` on the same origin to read the full snapshot.
+Set the same `RUNNER_ID` in both services. Set `RUNNER_GPU_PCI` to the game host GPU's PCI address from `/dev/dri/by-path`, for example `0000:01:00.0`. The runner uses NVIDIA CDI or AMD DRM device mappings. Start the session API, then run `npm start` here. The example WebSocket URL uses the default local API port. Sign in to the player panel and use **Play** or **Stop** on a game card. Sign in to the admin panel and open `/api/admin/runner` on the same origin to read the full snapshot.
 
-OpenArena becomes **Running** when the bundled agent responds inside the container. **Stop** removes the container while keeping the player's named save volume at `/home/player/.openarena`. Restarting the runner recovers existing games from Docker.
+A game becomes **Running** when its bundled agent responds inside the container. **Stop** removes the container and keeps its save volume. Each player and game gets a separate volume, including each Minecraft version. Restarting the runner recovers existing games from Docker.
+
+## Game images
+
+Build the images you plan to run in the `containerz` checkout. The runner uses local tags.
+
+| Game              | Image                          | Save directory                         |
+| ----------------- | ------------------------------ | -------------------------------------- |
+| OpenArena         | `containerz/openarena:dev`     | `/home/player/.openarena`              |
+| Minecraft 26.3    | `containerz/minecraft:26.3`    | `/home/player/.local/share/PineconeMC` |
+| Minecraft 1.21.11 | `containerz/minecraft:1.21.11` | `/home/player/.local/share/PineconeMC` |
+| HoloCure          | `containerz/holocure:dev`      | `/home/player/.wine-holocure`          |
+
+Set `HOLOCURE_GAME_DIR` in the runner's `.env` to the local extracted game directory containing `HoloCure.exe` and `data.win`. The runner mounts it read-only at `/opt/holocure`. [HoloCure setup](https://github.com/kkps-d/containerz/tree/main/images/holocure)
 
 ## Local streaming network
 
-Rebuild the streamer and OpenArena images from the updated web-remote-desktop agent. Run these commands from the `containerz` checkout with `web-remote-desktop` next to it.
+Rebuild the streamer and game images from the updated web-remote-desktop agent. Run these commands from the `containerz` checkout with `web-remote-desktop` next to it.
 
 ```sh
 docker build --build-context streamer=../web-remote-desktop/agent -t containerz/streamer:dev images/streamer
 docker build -t containerz/openarena:dev images/openarena
+docker build -t containerz/minecraft:26.3 images/minecraft
+docker build -t containerz/minecraft:1.21.11 --build-arg MINECRAFT_VERSION=1.21.11 images/minecraft
+docker build -t containerz/holocure:dev images/holocure
 npm --prefix ../web-remote-desktop/client ci
 npm --prefix ../web-remote-desktop/client run build -- --base /viewer/ --outDir dist/game-stream
 ```

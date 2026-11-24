@@ -1,9 +1,12 @@
 import { execFile } from 'node:child_process';
+import { constants } from 'node:fs';
+import { access, realpath } from 'node:fs/promises';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
+import { gameProfiles } from './games.ts';
 
 const exec = promisify(execFile);
-const image = 'containerz/openarena:dev';
 const runnerLabel = 'io.game-stream.runner';
 const profileLabel = 'io.game-stream.profile';
 const gameLabel = 'io.game-stream.game';
@@ -62,7 +65,12 @@ async function inspect(id: string): Promise<ContainerInfo | null> {
   }
 }
 
-export function createDocker(runnerId: string, gpuArgs: string[], network: string): GameDocker {
+export function createDocker(
+  runnerId: string,
+  gpuArgs: string[],
+  network: string,
+  holocureGameDir?: string,
+): GameDocker {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
     `game-stream-${runnerId}-${game.profileId}-${game.gameId}`;
@@ -74,7 +82,8 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
     const gameId = labels?.[gameLabel];
     if (
       labels?.[runnerLabel] !== runnerId ||
-      gameId !== 'openarena' ||
+      !gameId ||
+      !gameProfiles.has(gameId) ||
       !profileId ||
       !/^user-[1-9][0-9]*$/.test(profileId) ||
       !id ||
@@ -115,6 +124,28 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
     },
 
     async create(game, launch) {
+      const profile = gameProfiles.get(game.gameId);
+      if (!profile) throw new Error(`Unknown game ID: ${game.gameId}`);
+
+      const gameArgs: string[] = [];
+      if (profile.offlineName) {
+        const playerName = BigInt(game.profileId.slice('user-'.length)).toString(36);
+        gameArgs.push('--env', `MINECRAFT_OFFLINE_NAME=P_${playerName}`);
+      }
+      if (profile.gameFilesPath) {
+        if (!holocureGameDir)
+          throw new Error('Set HOLOCURE_GAME_DIR to the extracted HoloCure folder.');
+        const source = await realpath(holocureGameDir);
+        for (const file of ['HoloCure.exe', 'data.win']) {
+          await access(join(source, file), constants.R_OK);
+        }
+        // Docker parses mount options as CSV, so quote the whole source field.
+        gameArgs.push(
+          '--mount',
+          `type=bind,"src=${source.replaceAll('"', '""')}",dst=${profile.gameFilesPath},readonly`,
+        );
+      }
+
       const containerName = name(game);
       const agent = network === 'none' ? undefined : launch;
       // Pass the secret through the Docker CLI environment to keep it out of its command line.
@@ -151,8 +182,9 @@ export function createDocker(runnerId: string, gpuArgs: string[], network: strin
               ? ['--env', `GAME_STREAM_AGENT_URL=${agent.url}`, '--env', 'GAME_STREAM_LAUNCH_TOKEN']
               : []),
             '--mount',
-            `type=volume,src=${containerName}-saves,dst=/home/player/.openarena`,
-            image,
+            `type=volume,src=${containerName}-saves,dst=${profile.savePath}`,
+            ...gameArgs,
+            profile.image,
           ],
           30_000,
           env,

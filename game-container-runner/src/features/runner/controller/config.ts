@@ -1,8 +1,11 @@
 import type { RunnerConfig } from '../types/connection.ts';
 
-export function readConfig(
-  env: NodeJS.ProcessEnv,
-): RunnerConfig & { runnerId: string; gpuPci: string; dockerNetwork?: string } {
+export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
+  runnerId: string;
+  gpuPci: string;
+  dockerNetwork?: string;
+  holocureGameDir?: string;
+} {
   const url = URL.parse(env.RUNNER_WS_URL ?? '');
   const loopback = url && ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
   if (
@@ -30,5 +33,6 @@ export function readConfig(
   if (dockerNetwork && !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(dockerNetwork)) {
     throw new Error('Set RUNNER_DOCKER_NETWORK to a valid Docker network name.');
   }
-  return { url, token, runnerId, gpuPci, dockerNetwork };
+  const holocureGameDir = env.HOLOCURE_GAME_DIR?.trim() || undefined;
+  return { url, token, runnerId, gpuPci, dockerNetwork, holocureGameDir };
 }

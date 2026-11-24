@@ -10,4 +10,7 @@
 
 ## Internet testing
 
-- [ ] Test across internet NAT once a public endpoint is available.
+- [ ] Serve the player panel, viewer, and session service over HTTPS on a VPS. Accept authenticated runner and agent WebSockets over WSS.
+- [ ] Give game containers outbound access to the VPS registration endpoint and public TURN relay. Keep game ports unpublished.
+- [ ] Configure VPS coturn with a reachable public relay address and open its listener and UDP relay port range.
+- [ ] Verify OpenArena playback, audio, input, reconnect, and Stop from a browser on a separate network.

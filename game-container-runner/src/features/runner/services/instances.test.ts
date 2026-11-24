@@ -205,3 +205,35 @@ await test('reports launch and readiness failures and allows a fresh instance on
   assert.equal(created.length, 2);
   assert.deepEqual(removed, ['docker-' + timeout.id]);
 });
+
+await test('advertises the full catalog and keeps game instances separate for one player', async () => {
+  const { docker, started, ready } = fakeDocker();
+  const runner = createGameInstances(docker);
+  await runner.reconcile();
+  assert.deepEqual(runner.snapshot()!.games, [
+    { id: 'openarena', title: 'OpenArena' },
+    { id: 'minecraft', title: 'Minecraft 26.3' },
+    { id: 'minecraft-1-21-11', title: 'Minecraft 1.21.11' },
+    { id: 'holocure', title: 'HoloCure' },
+  ]);
+
+  const commands = runner.snapshot()!.games.map(({ id }) => ({ ...play(), gameId: id }));
+  for (const command of commands) runner.dispatch(command);
+  await idle();
+  for (const id of started) ready.add(id);
+  const recovered = createGameInstances(docker);
+  await recovered.reconcile();
+  assert.equal(recovered.snapshot()!.containers.length, 4);
+  assert(recovered.snapshot()!.containers.every(({ state }) => state === 'running'));
+
+  const [openArena, minecraft] = commands;
+  recovered.dispatch({ ...minecraft, type: 'stop', instanceId: openArena.instanceId });
+  assert.equal(recovered.snapshot()!.containers.length, 4);
+  assert(recovered.snapshot()!.containers.every(({ state }) => state === 'running'));
+  recovered.dispatch({ ...minecraft, type: 'stop' });
+  await idle();
+  assert.deepEqual(
+    recovered.snapshot()!.containers.map(({ gameId }) => gameId),
+    ['openarena', 'minecraft-1-21-11', 'holocure'],
+  );
+});

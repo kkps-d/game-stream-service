@@ -6,7 +6,8 @@ import type {
   RunnerContainer,
 } from '../../../../../protocol/runner.ts';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
-import { catalog, createSnapshot } from './snapshot.ts';
+import { gameProfiles } from './games.ts';
+import { createSnapshot } from './snapshot.ts';
 
 interface Entry {
   view: RunnerContainer;
@@ -18,7 +19,7 @@ interface Entry {
 const keyFor = ({ profileId, gameId }: Pick<GameTarget, 'profileId' | 'gameId'>) =>
   JSON.stringify([profileId, gameId]);
 
-export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
+export function createGameInstances(docker: GameDocker, readinessMs?: number) {
   let entries = new Map<string, Entry>();
   const listeners = new Set<() => void>();
   let available = false;
@@ -40,15 +41,16 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
   }
 
   async function stop(key: string, entry: Entry, wasRunning: boolean) {
+    const title = gameProfiles.get(entry.view.gameId)?.title ?? 'The game';
     try {
       if (entry.dockerId) await docker.remove(entry.dockerId);
       entries.delete(key);
     } catch (error) {
-      console.error('Could not stop OpenArena.', error);
+      console.error(`Could not stop ${title}.`, error);
       entry.view = {
         ...entry.view,
         state: wasRunning ? 'running' : 'failed',
-        error: 'OpenArena could not be stopped. Try Stop again.',
+        error: `${title} could not be stopped. Try Stop again.`,
       };
       entry.busy = false;
     }
@@ -56,6 +58,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
   }
 
   async function start(key: string, entry: Entry, agent?: AgentLaunch) {
+    const title = gameProfiles.get(entry.view.gameId)?.title ?? 'The game';
     const isStopping = () => entry.view.state === 'stopping';
     try {
       if (entry.dockerId) {
@@ -67,8 +70,8 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
         if (!isStopping()) await docker.start(entry.dockerId);
       }
     } catch (error) {
-      console.error('Could not start OpenArena.', error);
-      if (!isStopping()) failed(entry, 'OpenArena could not start. Try Play again.');
+      console.error(`Could not start ${title}.`, error);
+      if (!isStopping()) failed(entry, `${title} could not start. Try Play again.`);
     }
 
     if (isStopping()) {
@@ -101,19 +104,22 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
       dockerId,
       busy: false,
     };
+    const profile = gameProfiles.get(gameId);
+    const title = profile?.title ?? 'The game';
     if (game.status !== 'running') {
-      failed(next, 'OpenArena is no longer running. Try Play again.');
+      failed(next, `${title} is no longer running. Try Play again.`);
       return next;
     }
 
+    const timeout = readinessMs ?? profile?.readinessMs ?? 20_000;
     next.readyBy = Number.isFinite(startedAt)
-      ? startedAt + readinessMs
-      : (previous?.readyBy ?? Date.now() + readinessMs);
+      ? startedAt + timeout
+      : (previous?.readyBy ?? Date.now() + timeout);
     if (await docker.ready(dockerId)) {
       next.view.state = 'running';
     } else if (Date.now() >= next.readyBy) {
-      console.error('OpenArena readiness timed out for Docker container', dockerId);
-      failed(next, 'OpenArena did not become ready. Try Play again.');
+      console.error(`${title} readiness timed out for Docker container`, dockerId);
+      failed(next, `${title} did not become ready. Try Play again.`);
     }
     return next;
   }
@@ -153,7 +159,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
         }),
       );
     } catch (error) {
-      if (!inventoryError) console.error('Could not query the OpenArena containers.', error);
+      if (!inventoryError) console.error('Could not query the game containers.', error);
       inventoryError = true;
       if (available) {
         available = false;
@@ -185,7 +191,7 @@ export function createGameInstances(docker: GameDocker, readinessMs = 20_000) {
     },
 
     dispatch(command: RunnerCommand) {
-      if (!available || !catalog.some(({ id }) => id === command.gameId)) return;
+      if (!available || !gameProfiles.has(command.gameId)) return;
       const key = keyFor(command);
       const current = entries.get(key);
       if (command.type === 'play') {

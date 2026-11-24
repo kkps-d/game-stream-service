@@ -9,7 +9,7 @@ try {
   const config = readConfig(process.env);
   const network = await resolveDockerNetwork(config.dockerNetwork);
   const instances = createGameInstances(
-    createDocker(config.runnerId, await resolveGpu(config.gpuPci), network),
+    createDocker(config.runnerId, await resolveGpu(config.gpuPci), network, config.holocureGameDir),
   );
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());
