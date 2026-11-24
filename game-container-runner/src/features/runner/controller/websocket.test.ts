@@ -5,11 +5,16 @@ import { test } from 'node:test';
 import { WebSocketServer } from 'ws';
 import { runRunner } from '../services/connection.ts';
 import { createSnapshot } from '../services/snapshot.ts';
+import type { RunnerControl } from '../types/connection.ts';
 import { readConfig } from './config.ts';
-import { reportSnapshot } from './websocket.ts';
+import { connectRunner } from './websocket.ts';
 
 const token = 'runner-test-token-with-enough-characters';
 const retry = { initialMs: 10, maximumMs: 30 };
+
+function controls(snapshot: RunnerControl['snapshot']): RunnerControl {
+  return { snapshot, dispatch: () => undefined, subscribe: () => () => undefined };
+}
 
 await test(
   'reports a fresh snapshot after the connection drops',
@@ -41,15 +46,22 @@ await test(
     let snapshotsTaken = 0;
     const result = await runRunner(
       (signal) =>
-        reportSnapshot(
+        connectRunner(
           { url: new URL(`ws://127.0.0.1:${address.port}`), token },
-          () => ({
-            ...createSnapshot(),
-            containers:
+          controls(() =>
+            createSnapshot(
               snapshotsTaken++ === 0
                 ? []
-                : [{ id: 'test-container', gameId: 'openarena', state: 'running' }],
-          }),
+                : [
+                    {
+                      id: 'test-container',
+                      gameId: 'openarena',
+                      profileId: 'user-1',
+                      state: 'running',
+                    },
+                  ],
+            ),
+          ),
           signal,
         ),
       shutdown.signal,
@@ -61,7 +73,9 @@ await test(
       createSnapshot(),
       {
         ...createSnapshot(),
-        containers: [{ id: 'test-container', gameId: 'openarena', state: 'running' }],
+        containers: [
+          { id: 'test-container', gameId: 'openarena', profileId: 'user-1', state: 'running' },
+        ],
       },
     ]);
   },
@@ -87,9 +101,9 @@ await test('stops retrying after an authorization failure', { timeout: 3_000 }, 
   assert.equal(
     await runRunner(
       (signal) =>
-        reportSnapshot(
+        connectRunner(
           { url: new URL(`ws://127.0.0.1:${address.port}`), token },
-          createSnapshot,
+          controls(createSnapshot),
           signal,
         ),
       shutdown.signal,

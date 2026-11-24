@@ -27,6 +27,16 @@ Set `RUNNER_ID` and `RUNNER_TOKEN` together to enable WebSocket upgrades at `/ap
 
 See the [runner setup](../../game-container-runner/README.md) for local testing.
 
+## Player games
+
+| Method | Path                      | Purpose                                           |
+| ------ | ------------------------- | ------------------------------------------------- |
+| GET    | `/api/games`              | List games and the caller’s own instances         |
+| POST   | `/api/games/:gameId/play` | Start the caller’s simulated game                 |
+| POST   | `/api/games/:gameId/stop` | Stop the instance identified by JSON `instanceId` |
+
+The service derives the runner profile from the signed-in account ID. Play and Stop return `202` when sent. The player panel polls for confirmed state. Unknown games and stale or foreign instances return `404`. Commands return `503` while the runner is unavailable.
+
 ## Frontend
 
 The player and admin panels each own a code-based TanStack route tree. `/login` handles sign-in and `/` checks the appropriate session before showing the signed-in page. Vite proxies `/api` so browsers use same-origin cookie requests. Change `PLAYER_PORT` or `ADMIN_PORT` in `.env` to override the local panel ports.

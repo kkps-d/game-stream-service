@@ -21,7 +21,9 @@ function isContainer(value: unknown): value is RunnerContainer {
     isRecord(value) &&
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.gameId) &&
-    (value.state === 'starting' || value.state === 'running' || value.state === 'exited')
+    typeof value.profileId === 'string' &&
+    /^user-[1-9][0-9]*$/.test(value.profileId) &&
+    (value.state === 'starting' || value.state === 'running' || value.state === 'stopping')
   );
 }
 
@@ -35,7 +37,7 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
 
   if (
     !isRecord(value) ||
-    value.version !== 1 ||
+    value.version !== 2 ||
     value.type !== 'snapshot' ||
     !Array.isArray(value.games) ||
     !value.games.every(isGame) ||
@@ -46,15 +48,22 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
   }
 
   const games = value.games.map(({ id, title }) => ({ id, title }));
-  const containers = value.containers.map(({ id, gameId, state }) => ({ id, gameId, state }));
+  const containers = value.containers.map(({ id, gameId, profileId, state }) => ({
+    id,
+    gameId,
+    profileId,
+    state,
+  }));
   const gameIds = new Set(games.map(({ id }) => id));
   if (
     gameIds.size !== games.length ||
     new Set(containers.map(({ id }) => id)).size !== containers.length ||
+    new Set(containers.map(({ gameId, profileId }) => JSON.stringify([profileId, gameId]))).size !==
+      containers.length ||
     containers.some(({ gameId }) => !gameIds.has(gameId))
   ) {
     return null;
   }
 
-  return { version: 1, type: 'snapshot', games, containers };
+  return { version: 2, type: 'snapshot', games, containers };
 }

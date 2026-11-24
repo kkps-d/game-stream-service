@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import WebSocket from 'ws';
 import type { RunnerSnapshot, RunnerStatus } from '../../protocol/runner.ts';
 import { openDatabase } from './database.ts';
@@ -20,7 +21,7 @@ const origin = 'http://localhost:5180';
 const token = 'runner-test-token-with-enough-characters';
 const password = 'test-account-password';
 const snapshot: RunnerSnapshot = {
-  version: 1,
+  version: 2,
   type: 'snapshot',
   games: [{ id: 'openarena', title: 'OpenArena' }],
   containers: [],
@@ -30,7 +31,7 @@ async function waitForStatus(read: () => Promise<RunnerStatus | null>, expected:
   let current: RunnerStatus | null = null;
   for (let attempt = 0; attempt < 80; attempt++) {
     current = await read();
-    if (current?.online === expected.online) break;
+    if (isDeepStrictEqual(current, expected)) break;
     await delay(10);
   }
   assert.deepEqual(current, expected);
@@ -80,6 +81,7 @@ await test(
 
     await createAccount(database.db, 'player', password, 'user');
     await createAccount(database.db, 'operator', password, 'admin');
+    await createAccount(database.db, 'other', password, 'user');
 
     function request(path: string, init?: RequestInit) {
       return fetch(`http://127.0.0.1:${port}/api/${path}`, init);
@@ -109,6 +111,28 @@ await test(
     assert.equal((await request('health')).status, 200);
     assert.equal((await request('admin/runner')).status, 401);
     const player = await signIn('player');
+    const other = await signIn('other');
+    assert.equal((await request('games')).status, 401);
+
+    function games(
+      cookie: string,
+      suffix = '',
+      action?: { instanceId?: string; profileId?: string },
+    ) {
+      return request('games' + suffix, {
+        method: action ? 'POST' : 'GET',
+        headers: {
+          Cookie: cookie,
+          ...(action && { Origin: origin, 'Content-Type': 'application/json' }),
+        },
+        body: action ? JSON.stringify(action) : undefined,
+      });
+    }
+
+    assert.deepEqual(await (await games(player)).json(), { runnerOnline: false, games: [] });
+    assert.equal((await games(player, '/openarena/play', {})).status, 503);
+    assert.equal((await games(player, '/openarena/stop', { instanceId: 'old' })).status, 503);
+
     assert.equal((await request('admin/runner', { headers: { Cookie: player } })).status, 403);
     const admin = await signIn('operator');
     async function status() {
@@ -136,8 +160,62 @@ await test(
     first.send(JSON.stringify(snapshot));
     await waitForStatus(status, { id: 'local', online: true, snapshot });
 
+    assert.equal((await games(player, '/missing/play', {})).status, 404);
+    assert.equal((await games(player, '/openarena/stop', {})).status, 400);
+    const playCommand = once(first, 'message');
+    assert.equal((await games(player, '/openarena/play', { profileId: 'user-3' })).status, 202);
+    const [playMessage] = await playCommand;
+    assert.deepEqual(JSON.parse(playMessage.toString()), {
+      version: 2,
+      type: 'play',
+      profileId: 'user-1',
+      gameId: 'openarena',
+    });
+
+    const playing: RunnerSnapshot = {
+      ...snapshot,
+      containers: [
+        { id: 'player-instance', gameId: 'openarena', profileId: 'user-1', state: 'starting' },
+      ],
+    };
+    first.send(JSON.stringify(playing));
+    await waitForStatus(status, { id: 'local', online: true, snapshot: playing });
+    assert.deepEqual(await (await games(player)).json(), {
+      runnerOnline: true,
+      games: [
+        {
+          id: 'openarena',
+          title: 'OpenArena',
+          instance: { id: 'player-instance', state: 'starting' },
+        },
+      ],
+    });
+    assert.deepEqual(await (await games(other)).json(), {
+      runnerOnline: true,
+      games: [{ id: 'openarena', title: 'OpenArena', instance: null }],
+    });
+    assert.equal(
+      (await games(other, '/openarena/stop', { instanceId: 'player-instance' })).status,
+      404,
+    );
+    assert.equal((await games(player, '/openarena/stop', { instanceId: 'old' })).status, 404);
+
+    const stopCommand = once(first, 'message');
+    assert.equal(
+      (await games(player, '/openarena/stop', { instanceId: 'player-instance' })).status,
+      202,
+    );
+    const [stopMessage] = await stopCommand;
+    assert.deepEqual(JSON.parse(stopMessage.toString()), {
+      version: 2,
+      type: 'stop',
+      profileId: 'user-1',
+      gameId: 'openarena',
+      instanceId: 'player-instance',
+    });
+
     const invalidClosed = once(first, 'close');
-    first.send(JSON.stringify({ ...snapshot, version: 2 }));
+    first.send(JSON.stringify({ ...snapshot, version: 1 }));
     const [invalidCode] = await invalidClosed;
     assert.equal(invalidCode, 1008);
     await waitForStatus(status, offline);
@@ -146,7 +224,9 @@ await test(
     await once(second, 'open');
     const updated: RunnerSnapshot = {
       ...snapshot,
-      containers: [{ id: 'test-container', gameId: 'openarena', state: 'running' }],
+      containers: [
+        { id: 'test-container', gameId: 'openarena', profileId: 'user-1', state: 'running' },
+      ],
     };
     second.send(JSON.stringify(updated));
     await waitForStatus(status, { id: 'local', online: true, snapshot: updated });

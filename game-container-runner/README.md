@@ -1,6 +1,6 @@
 # Game container runner
 
-The runner connects from the game host to the game session service. It reports an OpenArena catalog entry and an empty container list using a local fixture. This milestone can run without Docker.
+The runner connects from the game host to the game session service. It reports an OpenArena catalog entry and simulates one game instance per player. The simulation runs without Docker.
 
 ## Setup
 
@@ -10,7 +10,7 @@ Use Node.js 24.2+ in the 24.x series. In `game-container-runner/`, run `npm ci` 
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-Set `RUNNER_ID=local` in the session service's `.env` and start its API. Then run `npm start` here. The example WebSocket URL uses the default local API port. Sign in to the admin panel and open `/api/admin/runner` on the same origin to read the current snapshot.
+Set `RUNNER_ID=local` in the session service's `.env` and start its API. Then run `npm start` here. The example WebSocket URL uses the default local API port. Sign in to the player panel and use **Play** or **Stop** on OpenArena. Sign in to the admin panel and open `/api/admin/runner` on the same origin to read the full snapshot.
 
 ## Development
 

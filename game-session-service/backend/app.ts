@@ -1,6 +1,7 @@
 import express, { type ErrorRequestHandler } from 'express';
 import type { AuthDatabase } from './database.ts';
 import { createAuthRouter, type AuthOptions } from './features/auth/controller/auth.ts';
+import { createGamesRouter } from './features/games/controller/games.ts';
 import { createRunnerStatusRouter } from './features/runner/controller/status.ts';
 import type { RunnerRegistry } from './features/runner/services/status.ts';
 
@@ -33,6 +34,7 @@ export async function createApp(
 
   app.use('/api', await createAuthRouter(database, options));
   app.use('/api', createRunnerStatusRouter(runners));
+  app.use('/api', createGamesRouter(runners));
   app.use('/api', (_request, response) => response.status(404).json({ error: 'Route not found.' }));
   const handleError: ErrorRequestHandler = (error, _request, response, next) => {
     if (response.headersSent) return next(error);

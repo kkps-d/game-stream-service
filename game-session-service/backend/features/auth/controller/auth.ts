@@ -36,6 +36,7 @@ function requireSession(adminOnly: boolean): RequestHandler {
   };
 }
 
+export const requireUserSession = requireSession(false);
 export const requireAdminSession = requireSession(true);
 
 const sendSession: RequestHandler = (request, response) => {
@@ -122,7 +123,7 @@ export async function createAuthRouter(database: AuthDatabase, options: AuthOpti
 
   router.post('/sign-in', loginLimit, signIn(false));
   router.post('/admin/sign-in', loginLimit, signIn(true));
-  router.get('/session', requireSession(false), sendSession);
+  router.get('/session', requireUserSession, sendSession);
   router.get('/admin/session', requireAdminSession, sendSession);
   router.post('/sign-out', (request, response, next) => {
     request.session.destroy((error) => {

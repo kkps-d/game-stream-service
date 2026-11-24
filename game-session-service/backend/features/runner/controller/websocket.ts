@@ -43,6 +43,12 @@ export function attachRunnerWebSocket(
 
     sockets.handleUpgrade(request, socket, head, (runner) => {
       active = runner;
+      registry.connect((command) => {
+        if (runner.readyState !== WebSocket.OPEN) return Promise.resolve(false);
+        return new Promise((resolve) => {
+          runner.send(JSON.stringify(command), (error) => resolve(!error));
+        });
+      });
       let alive = true;
       const heartbeat = setInterval(() => {
         if (!alive) {

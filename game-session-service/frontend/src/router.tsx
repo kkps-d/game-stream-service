@@ -25,6 +25,7 @@ const homeRoute = createRoute({
     <HomePage
       user={homeRoute.useRouteContext().user}
       onSignedOut={() => router.navigate({ to: '/login', replace: true })}
+      onSessionExpired={() => router.navigate({ to: '/login', replace: true })}
     />
   ),
 });

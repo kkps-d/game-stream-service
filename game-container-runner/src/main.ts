@@ -1,17 +1,18 @@
 import { readConfig } from './features/runner/controller/config.ts';
-import { reportSnapshot } from './features/runner/controller/websocket.ts';
+import { connectRunner } from './features/runner/controller/websocket.ts';
 import { runRunner } from './features/runner/services/connection.ts';
-import { createSnapshot } from './features/runner/services/snapshot.ts';
+import { createGameInstances } from './features/runner/services/instances.ts';
 
 try {
   const config = readConfig(process.env);
+  const instances = createGameInstances();
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());
   process.once('SIGTERM', () => shutdown.abort());
 
   console.log('Game container runner started.');
   const result = await runRunner(
-    (signal) => reportSnapshot(config, createSnapshot, signal),
+    (signal) => connectRunner(config, instances, signal),
     shutdown.signal,
   );
   if (result === 'rejected') {
