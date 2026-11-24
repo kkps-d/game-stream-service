@@ -4,7 +4,11 @@ import type { AgentRegistrations } from '../../agent/services/registrations.ts';
 import type { RunnerRegistry } from '../../runner/services/status.ts';
 import type { GameAction, GameCommandResult } from '../types/action.ts';
 
-export function createGamesService(runners: RunnerRegistry, registrations?: AgentRegistrations) {
+export function createGamesService(
+  runners: RunnerRegistry,
+  registrations?: AgentRegistrations,
+  streaming = false,
+) {
   return {
     list(accountId: number): PlayerCatalog {
       const snapshot = runners.read()?.snapshot;
@@ -23,6 +27,11 @@ export function createGamesService(runners: RunnerRegistry, registrations?: Agen
               ? {
                   id: instance.id,
                   state: instance.state,
+                  ...(streaming &&
+                    instance.state === 'running' &&
+                    registrations?.connection(instance.id, profileId, game.id) && {
+                      streamReady: true,
+                    }),
                   ...(instance.error && { error: instance.error }),
                 }
               : null,

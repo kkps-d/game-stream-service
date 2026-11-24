@@ -11,3 +11,4 @@
 - Added a local coturn relay on an internal Docker bridge. Verified relay-only WebRTC between host and container Chromium, plus rejection of bad and expired credentials.
 - Added opt-in private bridge networking for OpenArena. Verified API health and coturn UDP reachability from the game container, loopback-only agent access, and Play and Stop with saves preserved in both network modes.
 - Added agent registration over the private bridge with one-time, instance-bound launch tokens. Verified registration and teardown with the rebuilt OpenArena image and tested invalid, expired, and replayed tokens.
+- Added owner-only stream signaling and short-lived TURN credentials. The registered agent uses relay-only ICE for game streams.

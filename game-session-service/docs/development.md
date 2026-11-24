@@ -39,6 +39,10 @@ See the [runner setup](../../game-container-runner/README.md) for local testing.
 
 The service derives the runner profile from the signed-in account ID. Play and Stop return `202` when sent. The player panel polls for confirmed state and displays safe launch and stop errors. Docker diagnostics are in the runner logs. Unknown games and stale or foreign instances return `404`. Commands return `503` while the runner is unavailable.
 
+## Game stream API
+
+Set `TURN_URL` and `TURN_SHARED_SECRET` from the local coturn setup. The service issues separate ten-minute credentials for each WebRTC peer. Under `/api/games/instances/:instanceId/stream`, the owner can fetch `GET /ice`, exchange SDP with `POST /offer`, and use the returned session URL for stream settings, stats, and viewer teardown. These requests require a running instance with a registered agent.
+
 ## Frontend
 
 The player and admin panels each own a code-based TanStack route tree. `/login` handles sign-in and `/` checks the appropriate session before showing the signed-in page. Vite proxies `/api` so browsers use same-origin cookie requests. Change `PLAYER_PORT` or `ADMIN_PORT` in `.env` to override the local panel ports.

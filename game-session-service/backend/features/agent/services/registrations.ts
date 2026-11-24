@@ -1,6 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { AgentLaunch, RunnerContainer } from '../../../../../protocol/runner.ts';
 
+import type { AgentConnection } from '../types/signaling.ts';
+
 interface Launch {
   profileId: string;
   gameId: string;
@@ -8,7 +10,7 @@ interface Launch {
   expiresAt: number;
   expiration: NodeJS.Timeout;
   seen: boolean;
-  close?: () => void;
+  connection?: AgentConnection;
 }
 
 const tokenLifetimeMs = 120_000;
@@ -25,7 +27,7 @@ export function createAgentRegistrations(origin: URL) {
     if (!launch) return;
     launches.delete(instanceId);
     clearTimeout(launch.expiration);
-    launch.close?.();
+    launch.connection?.close();
   }
 
   return {
@@ -56,16 +58,21 @@ export function createAgentRegistrations(origin: URL) {
       const launch = launches.get(instanceId);
       return (
         !!launch &&
-        !launch.close &&
+        !launch.connection &&
         launch.expiresAt > Date.now() &&
         timingSafeEqual(launch.tokenHash, hashToken(token))
       );
     },
 
-    register(instanceId: string, close: () => void) {
+    register(instanceId: string, connection: AgentConnection) {
       const launch = launches.get(instanceId)!;
       clearTimeout(launch.expiration);
-      launch.close = close;
+      launch.connection = connection;
+    },
+
+    connection(instanceId: string, profileId: string, gameId: string) {
+      const launch = launches.get(instanceId);
+      if (launch?.profileId === profileId && launch.gameId === gameId) return launch.connection;
     },
 
     sync(containers: RunnerContainer[]) {

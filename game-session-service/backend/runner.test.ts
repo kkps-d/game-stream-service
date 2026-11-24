@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -15,6 +15,7 @@ import type { RunnerSnapshot, RunnerStatus } from '../../protocol/runner.ts';
 import { openDatabase } from './database.ts';
 import { createAgentServer } from './features/agent/controller/http.ts';
 import { createAgentRegistrations } from './features/agent/services/registrations.ts';
+import { readTurnConfig } from './features/agent/services/turn.ts';
 import { createAccount } from './features/auth/services/accounts.ts';
 import { attachRunnerWebSocket } from './features/runner/controller/websocket.ts';
 import { createRunnerRegistry } from './features/runner/services/status.ts';
@@ -59,6 +60,7 @@ await test(
     );
 
     const database = openDatabase(filename);
+    const turnSecret = 'a'.repeat(64);
     const registrations = createAgentRegistrations(new URL('ws://127.0.0.1'));
     const agentServer = createAgentServer(registrations);
     const server = await createSessionServer(
@@ -68,6 +70,7 @@ await test(
         origins: new Set([origin]),
         secureCookies: false,
         runner: { id: 'local', token },
+        turn: readTurnConfig('turn:172.30.42.2:3478', turnSecret),
       },
       registrations,
     );
@@ -236,6 +239,98 @@ await test(
     const replay = connectAgent(instanceId, agent.token);
     const [replayError] = (await once(replay, 'error')) as [Error];
     assert.match(replayError.message, /Unexpected server response: 401/);
+
+    const running: RunnerSnapshot = {
+      ...playing,
+      containers: [{ ...playing.containers[0], state: 'running' }],
+    };
+    first.send(JSON.stringify(running));
+    await waitForStatus(status, { id: 'local', online: true, snapshot: running });
+    const stream = `/api/games/instances/${instanceId}/stream`;
+    const owner = { Cookie: player, Origin: origin };
+    const outsider = { Cookie: other, Origin: origin };
+    function view(path: string, init?: RequestInit) {
+      return fetch(`http://127.0.0.1:${port}${stream}${path}`, init);
+    }
+
+    assert.equal((await view('/ice')).status, 401);
+    assert.equal((await view('/ice', { headers: outsider })).status, 404);
+    assert.equal(
+      (
+        await view('/offer', {
+          method: 'POST',
+          headers: { ...outsider, 'Content-Type': 'application/sdp' },
+          body: 'v=0\r\n',
+        })
+      ).status,
+      404,
+    );
+
+    const ice = await view('/ice', { headers: owner });
+    assert.equal(ice.status, 200);
+    const {
+      iceServers: [relay],
+    } = (await ice.json()) as {
+      iceServers: { urls: string; credential: string; username: string }[];
+    };
+    assert.equal(relay.urls, 'turn:172.30.42.2:3478?transport=udp');
+    assert.equal(
+      relay.credential,
+      createHmac('sha1', turnSecret).update(relay.username).digest('base64'),
+    );
+    const catalog = (await (await games(player)).json()) as {
+      games: { instance: { streamReady?: boolean } }[];
+    };
+    assert.equal(catalog.games[0].instance.streamReady, true);
+
+    const sessionId = '1'.repeat(32);
+    const operations: string[] = [];
+    let agentTurnUrl: string | undefined;
+    activeAgent.on('message', (message) => {
+      const command = JSON.parse(message.toString()) as {
+        requestId: string;
+        operation: string;
+        turnUrl?: string;
+      };
+      operations.push(command.operation);
+      if (command.operation === 'offer') agentTurnUrl = command.turnUrl;
+      activeAgent.send(
+        JSON.stringify({
+          requestId: command.requestId,
+          status: command.operation === 'offer' ? 201 : command.operation === 'stop' ? 204 : 200,
+          sessionId: command.operation === 'offer' ? sessionId : null,
+          body: command.operation === 'offer' ? 'v=0\r\n' : '{}',
+        }),
+      );
+    });
+
+    const offer = await view('/offer', {
+      method: 'POST',
+      headers: { ...owner, 'Content-Type': 'application/sdp' },
+      body: 'v=0\r\n',
+    });
+    assert.equal(offer.status, 201);
+    assert.equal(await offer.text(), 'v=0\r\n');
+    assert.equal(offer.headers.get('location'), `${stream}/sessions/${sessionId}`);
+    assert.match(agentTurnUrl ?? '', /^turn:\/\/\d+%3A.+@172\.30\.42\.2:3478$/);
+    assert.ok(!agentTurnUrl?.includes(encodeURIComponent(relay.username)));
+
+    const session = `/sessions/${sessionId}`;
+    assert.equal((await view(session, { headers: outsider })).status, 404);
+    assert.equal((await view(session, { headers: owner })).status, 200);
+    assert.equal((await view(session + '/stats', { headers: owner })).status, 200);
+    assert.equal(
+      (
+        await view(session, {
+          method: 'PATCH',
+          headers: { ...owner, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ framerate: 30 }),
+        })
+      ).status,
+      200,
+    );
+    assert.equal((await view(session, { method: 'DELETE', headers: owner })).status, 204);
+    assert.deepEqual(operations, ['offer', 'info', 'stats', 'update', 'stop']);
 
     const stopCommand = once(first, 'message');
     assert.equal((await games(player, '/openarena/stop', { instanceId })).status, 202);

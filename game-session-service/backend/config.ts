@@ -2,6 +2,7 @@ import { isIPv4 } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { adminPort, playerPort } from '../ports.ts';
 import { resolveDatabasePath } from './database-path.ts';
+import { readTurnConfig } from './features/agent/services/turn.ts';
 import type { RunnerConfig } from './features/runner/types/runner.ts';
 
 const serviceRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -39,6 +40,7 @@ export function readConfig() {
   return {
     sessionSecret,
     agentBindAddress,
+    turn: readTurnConfig(process.env.TURN_URL, process.env.TURN_SHARED_SECRET),
     runner: readRunnerConfig(),
     secureCookies: process.env.NODE_ENV === 'production',
     origins: new Set(

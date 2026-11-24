@@ -17,9 +17,13 @@ function respond(response: Response, result: GameCommandResult) {
   }
 }
 
-export function createGamesRouter(runners: RunnerRegistry, registrations?: AgentRegistrations) {
+export function createGamesRouter(
+  runners: RunnerRegistry,
+  registrations?: AgentRegistrations,
+  streaming = false,
+) {
   const router = express.Router();
-  const games = createGamesService(runners, registrations);
+  const games = createGamesService(runners, registrations, streaming);
 
   router.get('/games', requireUserSession, (request, response) => {
     response.json(games.list(request.user!.id));
