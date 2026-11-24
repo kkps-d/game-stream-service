@@ -24,3 +24,4 @@
 - Rebuilt both Minecraft versions and HoloCure with the WSS-capable agent. Verified 720p streams through the public player panel and save retention on Stop. HoloCure now backs up an incomplete Wine prefix before initializing a fresh one.
 - Set runner-launched games to 1080p60. Verified all four Docker launch configurations and decoded 1080p OpenArena video on High through the public viewer.
 - Passed authenticated login usernames to both Minecraft versions for new saves. Kept the stable account-ID fallback and preserved existing offline names, UUIDs, and volume keys. Verified session and runner tests, both image builds, and isolated launcher smoke tests.
+- Restored the game images’ 720p60 launch defaults while VPS packet loss remains under investigation.
