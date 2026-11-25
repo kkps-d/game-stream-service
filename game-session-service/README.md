@@ -21,6 +21,18 @@ npm run account:create -- operator admin
 npm run dev:api
 ```
 
+To change an existing account's password, run `npm run account:password -- player`.
+Both commands prompt for a password when you omit it. Passwords must be 12–128
+characters. For noninteractive use, pass the password as the final argument.
+Include the role when creating an account this way.
+
+```sh
+npm run --silent account:create -- player user '<password>'
+npm run --silent account:password -- player '<new-password>'
+```
+
+Use the masked prompts to keep passwords out of shell history.
+
 Run either or both panels in separate terminals.
 
 | Command                 | Panel  | Address                 |

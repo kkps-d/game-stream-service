@@ -6,6 +6,13 @@ import type { AuthDatabase } from '../../../database.ts';
 import type { Account, AccountRole, SignInRequest } from '../types/account.ts';
 import { users } from './schema.ts';
 
+function hashPassword(password: string) {
+  if (password.length < 12 || password.length > 128) {
+    throw new Error('Use a password between 12 and 128 characters.');
+  }
+  return hash(password);
+}
+
 export async function createAccount(
   database: AuthDatabase,
   username: string,
@@ -15,11 +22,7 @@ export async function createAccount(
   if (!/^[a-z0-9_][a-z0-9_.-]{2,31}$/i.test(username)) {
     throw new Error('Use 3–32 letters, numbers, dots, dashes, or underscores for the username.');
   }
-  if (password.length < 12 || password.length > 128) {
-    throw new Error('Use a password between 12 and 128 characters.');
-  }
-
-  const passwordHash = await hash(password);
+  const passwordHash = await hashPassword(password);
   try {
     database.insert(users).values({ username: username.toLowerCase(), passwordHash, role }).run();
   } catch (error) {
@@ -29,6 +32,25 @@ export async function createAccount(
     }
     throw new Error('Could not save the account.', { cause: error });
   }
+}
+
+export async function changeAccountPassword(
+  database: AuthDatabase,
+  username: string,
+  password: string,
+) {
+  const passwordHash = await hashPassword(password);
+  let changes: number;
+  try {
+    ({ changes } = database
+      .update(users)
+      .set({ passwordHash })
+      .where(eq(users.username, sql`lower(${username})`))
+      .run());
+  } catch (error) {
+    throw new Error('Could not save the password.', { cause: error });
+  }
+  if (changes === 0) throw new Error('Account not found.');
 }
 
 export async function createAccountService(database: AuthDatabase) {

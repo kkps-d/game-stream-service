@@ -9,6 +9,7 @@
     "dev": "node --env-file-if-exists=.env frontend/dev.ts",
     "dev:api": "node --env-file-if-exists=.env --watch backend/server.ts",
     "account:create": "node --env-file-if-exists=.env backend/features/auth/controller/create-account.ts",
+    "account:password": "node --env-file-if-exists=.env backend/features/auth/controller/change-password.ts",
     "build": "npm run check && npm run build --workspace frontend",
     "check": "tsc --noEmit -p backend && tsc --noEmit -p frontend",
     "test": "node --test backend/auth.test.ts backend/runner.test.ts backend/features/agent/controller/http.test.ts",
