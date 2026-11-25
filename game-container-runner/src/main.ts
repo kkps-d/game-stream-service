@@ -13,7 +13,8 @@ import { createGameInstances } from './features/runner/services/instances.ts';
 try {
   const config = readConfig(process.env);
   const network = await resolveDockerNetwork(config.dockerNetwork, !!config.vps);
-  const lobbyStreaming = config.lobbyTurn && (await checkLobbyStreaming(network, config.lobbyTurn));
+  const lobbyStreaming =
+    config.lobbyTurn && (await checkLobbyStreaming(network, config.lobbyTurn, config.vps));
   const docker = createDocker(
     config.runnerId,
     await resolveGpu(config.gpuPci),

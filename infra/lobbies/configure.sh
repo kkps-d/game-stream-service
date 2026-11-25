@@ -22,6 +22,9 @@ if [ "$has_lobby" = 1 ]; then
     lobby_output="oifname \"lobby0\" ip saddr $lobby_subnet ip daddr { $lobby_subnet, 224.0.0.0/4, 255.255.255.255 } accept"
 fi
 
+ip -4 route get "$agent_ip" | grep -q " dev stream0 "
+ip -4 route get "$turn_ip" | grep -q " dev stream0 "
+
 # These rules live in the game namespace. Docker removes them with the namespace.
 nft -f - <<RULES
 table inet game_stream {

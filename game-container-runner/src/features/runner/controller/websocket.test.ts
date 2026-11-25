@@ -131,6 +131,23 @@ await test('requires a secure WebSocket URL outside loopback', () => {
   );
 });
 
+await test('keeps VPS lobby streaming on the firewall-approved endpoint', () => {
+  const config = {
+    RUNNER_WS_URL: 'wss://games.example/api/runners/connect',
+    RUNNER_TOKEN: token,
+    RUNNER_GPU_PCI: '0000:01:00.0',
+    RUNNER_DOCKER_NETWORK: 'game-stream-vps-egress',
+    RUNNER_VPS_IP: '203.0.113.10',
+    RUNNER_ENABLE_LAN_LOBBIES: '1',
+  };
+  assert.deepEqual(readConfig(config).lobbyTurn, { ip: '203.0.113.10', port: '3478' });
+  assert.throws(
+    () => readConfig({ ...config, RUNNER_LOBBY_TURN_IP: '203.0.113.11' }),
+    /VPS lobbies/,
+  );
+  assert.throws(() => readConfig({ ...config, RUNNER_LOBBY_TURN_PORT: '3479' }), /VPS lobbies/);
+});
+
 await test('accepts public WSS and private IPv4 WS for agent commands', () => {
   const instanceId = '0b2b2c00-ec49-4f1e-b048-23ee20c50cae';
   const path = `/api/agents/connect/${instanceId}`;

@@ -65,11 +65,8 @@ export function readConfig() {
   const enableLobbies = process.env.ENABLE_LAN_LOBBIES === '1';
   const turn = readTurnConfig(process.env.TURN_URL, process.env.TURN_SHARED_SECRET);
   const runner = readRunnerConfig();
-  if (
-    enableLobbies &&
-    (!agentBindAddress || !turn || !runner || process.env.NODE_ENV === 'production')
-  ) {
-    throw new Error('Local LAN lobbies require a local agent bind address, TURN, and a runner.');
+  if (enableLobbies && ((!agentBindAddress && !agentPublicOrigin) || !turn || !runner)) {
+    throw new Error('LAN lobbies require an agent endpoint, TURN, and a runner.');
   }
 
   return {

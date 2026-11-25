@@ -21,7 +21,7 @@ const readyFile = '/run/game-stream-network/ready';
 const lobbyName = (runnerId: string, lobbyId: string) => `game-stream-${runnerId}-lobby-${lobbyId}`;
 const networkArgs = (network: string, device: string) => [
   '--network',
-  `name=${network},driver-opt=com.docker.network.endpoint.ifname=${device}`,
+  `name=${network},gw-priority=${device === 'stream0' ? 1 : 0},driver-opt=com.docker.network.endpoint.ifname=${device}`,
 ];
 
 interface ContainerInfo {
@@ -93,7 +93,7 @@ export function createDocker(
   network: string,
   holocureGameDir?: string,
   vps?: { ip: string; origin: string },
-  lobbyStreaming?: { ip: string; port: string; gateway: string },
+  lobbyStreaming?: { ip: string; port: string; agentIp: string },
 ): GameDocker & { lobbyNetworks: LobbyDocker } {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
@@ -273,7 +273,8 @@ export function createDocker(
           throw new Error('Agent registration must use the configured VPS origin.');
         }
         // Pin DNS to the firewall's destination while TLS still verifies the hostname.
-        gameArgs.push('--add-host', `${endpoint.hostname}:${vps.ip}`, '--dns', '127.0.0.1');
+        gameArgs.push('--add-host', `${endpoint.hostname}:${vps.ip}`);
+        if (!lobbyStreaming) gameArgs.push('--dns', '127.0.0.1');
       }
       const lobbyNetwork =
         launch?.lobbyId && lobbyStreaming
@@ -290,12 +291,9 @@ export function createDocker(
         const endpoint = agent && new URL(agent.url);
         if (
           !endpoint ||
-          endpoint.protocol !== 'ws:' ||
-          endpoint.hostname !== lobbyStreaming.gateway
+          (!vps && (endpoint.protocol !== 'ws:' || endpoint.hostname !== lobbyStreaming.agentIp))
         )
-          throw new Error(
-            'LAN lobbying requires registration on the local streaming bridge gateway.',
-          );
+          throw new Error('LAN lobby registration requires the configured streaming endpoint.');
         const imageCommand: unknown = JSON.parse(
           await docker(['image', 'inspect', '--format', '{{json .Config.Cmd}}', profile.image]),
         );
@@ -397,8 +395,8 @@ export function createDocker(
           '--cap-add',
           'NET_ADMIN',
           networkHelper,
-          lobbyStreaming.gateway,
-          endpoint.port || '80',
+          lobbyStreaming.agentIp,
+          endpoint.port || (endpoint.protocol === 'wss:' ? '443' : '80'),
           lobbyStreaming.ip,
           lobbyStreaming.port,
           launch.lobbyId ? '1' : '0',
@@ -449,10 +447,15 @@ export function createDocker(
   };
 }
 
-export async function checkLobbyStreaming(network: string, turn: { ip: string; port: string }) {
+export async function checkLobbyStreaming(
+  network: string,
+  turn: { ip: string; port: string },
+  vps?: { ip: string },
+) {
   await docker(['image', 'inspect', '--format', '{{.Id}}', networkHelper]).catch(() => {
-    throw new Error('Build the local lobby network helper before starting the runner.');
+    throw new Error('Build the lobby network helper before starting the runner.');
   });
+  if (vps) return { ...turn, agentIp: vps.ip };
   const gateway = await docker([
     'network',
     'inspect',
@@ -474,5 +477,5 @@ export async function checkLobbyStreaming(network: string, turn: { ip: string; p
       'Start local coturn on the configured streaming bridge before starting the runner.',
     );
   }
-  return { ...turn, gateway };
+  return { ...turn, agentIp: gateway };
 }

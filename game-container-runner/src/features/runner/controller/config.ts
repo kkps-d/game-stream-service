@@ -45,19 +45,19 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
   }
   const vps = vpsIp ? { ip: vpsIp, origin: url.origin } : undefined;
   const enableLobbies = env.RUNNER_ENABLE_LAN_LOBBIES === '1';
-  const turnIp = env.RUNNER_LOBBY_TURN_IP?.trim() || '172.30.42.2';
+  const turnIp = env.RUNNER_LOBBY_TURN_IP?.trim() || vps?.ip || '172.30.42.2';
   const turnPort = env.RUNNER_LOBBY_TURN_PORT?.trim() || '3478';
   if (
     enableLobbies &&
-    (!loopback ||
-      vps ||
+    ((!loopback && !vps) ||
       !dockerNetwork ||
       !isIPv4(turnIp) ||
       !/^[1-9][0-9]{0,4}$/.test(turnPort) ||
-      Number(turnPort) > 65535)
+      Number(turnPort) > 65535 ||
+      (vps && (turnIp !== vps.ip || turnPort !== '3478' || url.port !== '')))
   ) {
     throw new Error(
-      'LAN lobbies require a local runner, an internal Docker bridge, and an IPv4 TURN address.',
+      'LAN lobbies require a streaming bridge and IPv4 TURN. VPS lobbies use WSS on 443 and TURN on 3478 at the configured VPS IP.',
     );
   }
   const lobbyTurn = enableLobbies ? { ip: turnIp, port: turnPort } : undefined;

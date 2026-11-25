@@ -58,6 +58,21 @@ docker network create --driver bridge --subnet 172.30.44.0/24 \
 
 Use `RUNNER_ID=vps-test` on both hosts. On the game host, set `RUNNER_WS_URL=wss://play.example.com/api/runners/connect`, `RUNNER_DOCKER_NETWORK=game-stream-vps-egress`, and `RUNNER_VPS_IP` to the public VPS IPv4. Match `RUNNER_TOKEN` with the session service. Reapply the firewall after reboot before starting the VPS runner.
 
+## Enable LAN lobbies
+
+Run the API schema update from the new release. Set `ENABLE_LAN_LOBBIES=1` in
+the VPS session environment and `RUNNER_ENABLE_LAN_LOBBIES=1` in the game host
+runner environment. On the game host, build the helper before restarting the
+runner and API.
+
+```sh
+docker build -t game-stream/lobby-network:dev infra/lobbies
+```
+
+The runner keeps WSS and TURN on the existing VPS egress bridge. Each lobby
+uses a separate Docker bridge with no host gateway or NAT. Use the standard
+WSS and TURN ports from the firewall setup above.
+
 ## Stop the test
 
 Stop any games from the player panel, stop the VPS runner on the game host, then run `systemctl stop game-session` and `docker compose stop` on the VPS. Keep the SQLite file, Caddy volumes, and game save volumes for the next run.
