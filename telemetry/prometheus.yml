@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 1s
+
+scrape_configs:
+  - job_name: node-performance
+    scrape_interval: 1s
+    params:
+      collect[]: [cpu, drm]
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_drm_memory_.*'
+        action: drop
+
+  - job_name: node-capacity
+    params:
+      collect[]: [meminfo, netdev, drm]
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_drm_(card_info|gpu_busy_percent)'
+        action: drop
+
+  - job_name: runner-performance
+    scrape_interval: 1s
+    static_configs:
+      - targets: ['127.0.0.1:9464']
+
+  - job_name: runner-capacity
+    metrics_path: /metrics/capacity
+    static_configs:
+      - targets: ['127.0.0.1:9464']
+
+  - job_name: runner-inventory
+    scrape_interval: 10s
+    metrics_path: /metrics/inventory
+    static_configs:
+      - targets: ['127.0.0.1:9464']
+
+  - job_name: browser-viewer
+    scrape_interval: 1s
+    static_configs:
+      - targets: ['127.0.0.1:9465']
+
+  - job_name: logical-lobbies
+    scrape_interval: 10s
+    metrics_path: /metrics/lobbies
+    static_configs:
+      - targets: ['127.0.0.1:9465']

@@ -20,6 +20,7 @@ export function createGameInstances(
   docker: GameDocker,
   readinessMs?: number,
   lobbies?: RunnerLobbyManager,
+  onInventory?: (games?: readonly DockerGame[]) => void,
 ) {
   let entries = new Map<string, Entry>();
   const listeners = new Set<() => void>();
@@ -153,6 +154,7 @@ export function createGameInstances(
       entries = next;
       available = true;
       inventoryError = false;
+      onInventory?.(inventory);
       if (!isDeepStrictEqual(previous, snapshot())) publish();
 
       // Cleanup starts after the entries are reserved, so Play and Stop cannot race it.
@@ -166,6 +168,7 @@ export function createGameInstances(
     } catch (error) {
       if (!inventoryError) console.error('Could not query the game containers.', error);
       inventoryError = true;
+      onInventory?.();
       if (available) {
         available = false;
         publish();

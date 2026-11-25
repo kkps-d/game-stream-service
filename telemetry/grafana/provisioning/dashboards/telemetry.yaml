@@ -1,0 +1,7 @@
+apiVersion: 1
+
+providers:
+  - name: Game streaming
+    type: file
+    options:
+      path: /var/lib/grafana/provisioned-dashboards

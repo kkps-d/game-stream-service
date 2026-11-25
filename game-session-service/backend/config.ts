@@ -72,6 +72,7 @@ export function readConfig() {
   return {
     sessionSecret,
     enableLobbies,
+    enableTelemetry: process.env.GAME_STREAM_TELEMETRY === '1',
     agentPublicOrigin: agentPublicOrigin ?? undefined,
     agentApiPort,
     agentBindAddress,

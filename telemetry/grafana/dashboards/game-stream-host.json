@@ -1,0 +1,468 @@
+{
+  "uid": "game-stream-host",
+  "title": "Game host telemetry",
+  "tags": [
+    "game streaming"
+  ],
+  "editable": false,
+  "schemaVersion": 39,
+  "refresh": "1s",
+  "time": {
+    "from": "now-10m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1s",
+      "5s",
+      "10s",
+      "30s",
+      "1m"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "uplink",
+        "label": "Uplink",
+        "type": "textbox",
+        "query": "eno1",
+        "current": {
+          "text": "eno1",
+          "value": "eno1"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU usage per logical core",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - rate(node_cpu_seconds_total{mode=\"idle\"}[10s]))",
+          "legendFormat": "CPU {{cpu}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "GPU and encoder utilization",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_nvidia_gpu_busy_percent",
+          "legendFormat": "NVIDIA {{pci}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_nvidia_encoder_busy_percent",
+          "legendFormat": "NVIDIA encoder {{pci}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "node_drm_gpu_busy_percent * on(card) group_left(pci) game_stream_gpu_card_info",
+          "legendFormat": "AMD {{pci}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Host RAM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "Used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "Available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "GPU memory",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_nvidia_gpu_memory_used_bytes",
+          "legendFormat": "NVIDIA {{pci}} VRAM used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_nvidia_gpu_memory_total_bytes",
+          "legendFormat": "NVIDIA {{pci}} VRAM total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "node_drm_memory_vram_used_bytes * on(card) group_left(pci) game_stream_gpu_card_info",
+          "legendFormat": "AMD {{pci}} reserved VRAM used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "node_drm_memory_vram_size_bytes * on(card) group_left(pci) game_stream_gpu_card_info",
+          "legendFormat": "AMD {{pci}} reserved VRAM total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "E",
+          "expr": "node_drm_memory_gtt_used_bytes * on(card) group_left(pci) game_stream_gpu_card_info",
+          "legendFormat": "AMD {{pci}} shared memory used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "F",
+          "expr": "node_drm_memory_gtt_size_bytes * on(card) group_left(pci) game_stream_gpu_card_info",
+          "legendFormat": "AMD {{pci}} shared memory aperture",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Uplink traffic",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "8 * rate(node_network_receive_bytes_total{device=\"$uplink\"}[20s])",
+          "legendFormat": "Receive",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "8 * rate(node_network_transmit_bytes_total{device=\"$uplink\"}[20s])",
+          "legendFormat": "Transmit",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Games and lobby networks",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_running_containers",
+          "legendFormat": "All running games",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_running_containers_by_game",
+          "legendFormat": "{{game}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "game_stream_active_lobbies",
+          "legendFormat": "Active lobbies",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "game_stream_lobby_networks",
+          "legendFormat": "Docker lobby networks",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Game streaming",
+      "tags": [
+        "game streaming"
+      ]
+    }
+  ]
+}

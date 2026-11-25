@@ -1,3 +1,4 @@
+import { createViewerMetrics, startSessionMetrics } from '../../telemetry/session.ts';
 import { createLobbyService } from './features/lobbies/services/lobbies.ts';
 import { lobbies as lobbyTable, lobbyMembers } from './features/lobbies/services/schema.ts';
 import { createServer } from 'node:http';
@@ -11,6 +12,7 @@ import type { RunnerConfig } from './features/runner/types/runner.ts';
 export interface ServerOptions extends AppOptions {
   runner?: RunnerConfig;
   enableLobbies?: boolean;
+  enableTelemetry?: boolean;
 }
 
 export async function createSessionServer(
@@ -18,9 +20,14 @@ export async function createSessionServer(
   options: ServerOptions,
   registrations?: AgentRegistrations,
 ) {
-  const registry = createRunnerRegistry(options.runner?.id, (snapshot) =>
-    registrations?.sync(snapshot.containers),
-  );
+  const runner = options.runner?.id ?? 'local';
+  const viewers = options.enableTelemetry ? createViewerMetrics(runner) : undefined;
+  const registry = createRunnerRegistry(options.runner?.id, (snapshot) => {
+    registrations?.sync(snapshot.containers);
+    viewers?.reconcile(
+      new Set(snapshot.containers.filter(({ state }) => state === 'running').map(({ id }) => id)),
+    );
+  });
   if (options.enableLobbies) {
     try {
       database.select().from(lobbyTable).limit(1).all();
@@ -32,7 +39,13 @@ export async function createSessionServer(
     }
   }
   const lobbies = options.enableLobbies ? createLobbyService(database, registry) : undefined;
-  const server = createServer(await createApp(database, options, registry, registrations, lobbies));
+  const server = createServer(
+    await createApp(database, options, registry, registrations, lobbies, viewers),
+  );
+  if (viewers) {
+    const metrics = startSessionMetrics(viewers, runner, lobbies?.countActive);
+    server.on('close', () => metrics.close());
+  }
   if (lobbies) {
     const timer = setInterval(() => {
       void lobbies.sync().catch(() => console.error('Could not synchronize LAN lobbies.'));

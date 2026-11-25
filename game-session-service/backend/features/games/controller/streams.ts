@@ -1,4 +1,5 @@
 import express, { type Response } from 'express';
+import type { ViewerMetrics } from '../../../../../telemetry/session.ts';
 import type { AgentRegistrations } from '../../agent/services/registrations.ts';
 import { agentTurnUrl, turnCredentials, type TurnConfig } from '../../agent/services/turn.ts';
 import type { AgentConnection, AgentReply } from '../../agent/types/signaling.ts';
@@ -24,6 +25,7 @@ export function createStreamsRouter(
   runners: RunnerRegistry,
   registrations?: AgentRegistrations,
   turn?: TurnConfig,
+  viewers?: ViewerMetrics,
 ) {
   const router = express.Router();
   const stream = express.Router();
@@ -64,6 +66,7 @@ export function createStreamsRouter(
       }
       response.locals.agent = agent;
       response.locals.instanceId = instanceId;
+      response.locals.gameId = instance.gameId;
       next();
     },
     stream,
@@ -99,6 +102,10 @@ export function createStreamsRouter(
         ':instanceId',
         encodeURIComponent(response.locals.instanceId),
       );
+      if (viewers) {
+        viewers.started(response.locals.instanceId, response.locals.gameId, reply.sessionId);
+        response.set('Game-Stream-Telemetry', '1');
+      }
       response
         .status(201)
         .set('Location', `/api${path}/sessions/${reply.sessionId}`)
@@ -126,6 +133,24 @@ export function createStreamsRouter(
     else respondError(response, reply);
   });
 
+  if (viewers) {
+    stream.post(
+      '/sessions/:sessionId/telemetry',
+      express.json({ limit: '1kb' }),
+      (request, response) => {
+        if (!request.is('application/json')) {
+          response.status(415).end();
+          return;
+        }
+        response
+          .status(
+            viewers.report(response.locals.instanceId, request.params.sessionId, request.body),
+          )
+          .end();
+      },
+    );
+  }
+
   stream.patch('/sessions/:sessionId', async (request, response) => {
     if (
       !request.is('application/json') ||
@@ -149,6 +174,8 @@ export function createStreamsRouter(
   stream.delete('/sessions/:sessionId', async (request, response) => {
     const agent: AgentConnection = response.locals.agent;
     const reply = await agent.request({ operation: 'stop', sessionId: request.params.sessionId });
+    if (reply?.status === 204 || reply?.status === 404)
+      viewers?.stopped(response.locals.instanceId, request.params.sessionId);
     if (reply?.status === 204) response.sendStatus(204);
     else respondError(response, reply);
   });

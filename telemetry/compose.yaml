@@ -1,0 +1,52 @@
+name: game-stream-telemetry
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    network_mode: host
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=1d
+      - --web.listen-address=127.0.0.1:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    network_mode: host
+    environment:
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: '3300'
+      GF_DASHBOARDS_MIN_REFRESH_INTERVAL: 1s
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in telemetry/.env}
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/provisioned-dashboards:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    network_mode: host
+    command:
+      - --web.listen-address=127.0.0.1:9100
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.meminfo
+      - --collector.netdev
+      - --collector.drm
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:

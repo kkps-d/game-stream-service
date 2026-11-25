@@ -13,6 +13,7 @@ export interface DockerGame extends GameTarget {
   status: string;
   exitCode: number;
   startedAt: number;
+  pid?: number;
 }
 
 export interface GameDocker {

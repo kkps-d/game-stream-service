@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
-import { and, asc, eq, gt, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, count, eq, gt, isNull, lte, or } from 'drizzle-orm';
 import {
   lobbyCodePattern,
   maxLobbies,
@@ -99,6 +99,8 @@ export function createLobbyService(db: AuthDatabase, runners: RunnerRegistry, no
 
   return {
     sync,
+    countActive: () =>
+      db.select({ total: count() }).from(lobbies).where(visible()).get()?.total ?? 0,
     list(userId: number, search: string): LobbyDirectory {
       const query = search.trim().toLowerCase();
       const current = membership(userId);

@@ -1,0 +1,756 @@
+{
+  "uid": "game-stream-game",
+  "title": "Game session telemetry",
+  "tags": [
+    "game streaming"
+  ],
+  "editable": false,
+  "schemaVersion": 39,
+  "refresh": "1s",
+  "time": {
+    "from": "now-10m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1s",
+      "5s",
+      "10s",
+      "30s",
+      "1m"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "game",
+        "label": "Game",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "game-stream-prometheus"
+        },
+        "query": {
+          "query": "label_values(game_stream_container_running, game)",
+          "refId": "StandardVariableQuery"
+        },
+        "definition": "label_values(game_stream_container_running, game)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "game_instance",
+        "label": "Instance",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "game-stream-prometheus"
+        },
+        "query": {
+          "query": "label_values(game_stream_container_running{game=~\"$game\"}, game_instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "definition": "label_values(game_stream_container_running{game=~\"$game\"}, game_instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Game and stream FPS",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(game_stream_frames_presented_total{game=~\"$game\",game_instance=~\"$game_instance\"}[5s])",
+          "legendFormat": "Game presented",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "rate(game_stream_frames_encoded_total{game=~\"$game\",game_instance=~\"$game_instance\"}[5s]) and on(runner,game,game_instance) (game_stream_encoder_active{game=~\"$game\",game_instance=~\"$game_instance\"} == 1)",
+          "legendFormat": "Encoded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "game_stream_browser_decoded_fps{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Browser decoded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Game frame time",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000 * histogram_quantile(0.95, rate(game_stream_frame_time_seconds_bucket{game=~\"$game\",game_instance=~\"$game_instance\"}[5s]))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "1000 * histogram_quantile(0.99, rate(game_stream_frame_time_seconds_bucket{game=~\"$game\",game_instance=~\"$game_instance\"}[5s]))",
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ],
+      "description": "Intervals between new presentations for the focused game window."
+    },
+    {
+      "id": 3,
+      "title": "Container CPU",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(game_stream_cpu_seconds_total{game=~\"$game\",game_instance=~\"$game_instance\"}[5s])",
+          "legendFormat": "Logical cores used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_cpu_logical_allowed{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Logical cores allowed",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "game_stream_cpu_quota_cores{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Quota in cores",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Container RAM",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_memory_bytes{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Charged usage",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_memory_limit_bytes{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Hard limit",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "CPU and memory limit usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * rate(game_stream_cpu_seconds_total{game=~\"$game\",game_instance=~\"$game_instance\"}[5s]) / game_stream_cpu_logical_allowed{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "CPU set used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * game_stream_memory_bytes{game=~\"$game\",game_instance=~\"$game_instance\"} / game_stream_memory_limit_bytes{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "RAM limit used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Viewer network",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_browser_packet_loss_percent{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Packet loss",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Viewer round trip",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 16,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000 * game_stream_browser_rtt_seconds{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "RTT",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Container and agent state",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_container_running{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Container running",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_agent_ready{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Agent ready",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "game_stream_encoder_active{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Viewer active",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Last game frame age",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "clamp_min(time() - game_stream_last_frame_timestamp_seconds{game=~\"$game\",game_instance=~\"$game_instance\"}, 0)",
+          "legendFormat": "Age",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "RAM limit and dropped frames",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "game_stream_memory_limit_hits_total{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "RAM limit hits",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "game_stream_oom_kills_total{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "OOM kills",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "game_stream_browser_dropped_frames{game=~\"$game\",game_instance=~\"$game_instance\"}",
+          "legendFormat": "Browser dropped frames",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "CPU quota throttling",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "game-stream-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * rate(game_stream_cpu_throttled_seconds_total{game=~\"$game\",game_instance=~\"$game_instance\"}[5s])",
+          "legendFormat": "Throttle time per second",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "game-stream-prometheus"
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Game streaming",
+      "tags": [
+        "game streaming"
+      ]
+    }
+  ]
+}

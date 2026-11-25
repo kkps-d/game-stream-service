@@ -1,3 +1,4 @@
+import type { ViewerMetrics } from '../../telemetry/session.ts';
 import { createLobbiesRouter } from './features/lobbies/controller/lobbies.ts';
 import type { LobbyService } from './features/lobbies/services/lobbies.ts';
 import express, { type ErrorRequestHandler } from 'express';
@@ -22,6 +23,7 @@ export async function createApp(
   runners: RunnerRegistry,
   registrations?: AgentRegistrations,
   lobbies?: LobbyService,
+  viewers?: ViewerMetrics,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -46,7 +48,7 @@ export async function createApp(
   app.use('/api', createRunnerStatusRouter(runners));
   app.use('/api', createLobbiesRouter(lobbies));
   app.use('/api', createGamesRouter(runners, registrations, !!options.turn, lobbies));
-  app.use('/api', createStreamsRouter(runners, registrations, options.turn));
+  app.use('/api', createStreamsRouter(runners, registrations, options.turn, viewers));
   app.use('/api', (_request, response) => response.status(404).json({ error: 'Route not found.' }));
   const handleError: ErrorRequestHandler = (error, _request, response, next) => {
     if (response.headersSent) return next(error);

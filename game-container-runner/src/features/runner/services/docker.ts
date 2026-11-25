@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { DockerGame, GameDocker, GameTarget } from '../types/docker.ts';
 import { gameProfiles } from './games.ts';
+import { prepareSnapshots, removeSnapshots } from '../../../../../telemetry/snapshots.ts';
 
 const exec = promisify(execFile);
 const runnerLabel = 'io.game-stream.runner';
@@ -29,7 +30,7 @@ interface ContainerInfo {
   Name: string;
   Config: { Labels: Record<string, string> | null };
   NetworkSettings: { Networks: Record<string, { NetworkID: string }> | null };
-  State: { Status: string; ExitCode: number; StartedAt: string; Running: boolean };
+  State: { Status: string; ExitCode: number; StartedAt: string; Running: boolean; Pid?: number };
 }
 
 async function docker(args: string[], timeout = 10_000, env?: NodeJS.ProcessEnv) {
@@ -94,7 +95,8 @@ export function createDocker(
   holocureGameDir?: string,
   vps?: { ip: string; origin: string },
   lobbyStreaming?: { ip: string; port: string; agentIp: string },
-): GameDocker & { lobbyNetworks: LobbyDocker } {
+  telemetryDirectory?: string,
+): GameDocker & { lobbyNetworks: LobbyDocker; countLobbyNetworks(): Promise<number> } {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
     `game-stream-${runnerId}-${game.profileId}-${game.gameId}`;
@@ -124,6 +126,7 @@ export function createDocker(
       status: container.State.Status,
       exitCode: container.State.ExitCode,
       startedAt: Date.parse(container.State.StartedAt),
+      pid: container.State.Pid,
     };
   }
 
@@ -233,6 +236,24 @@ export function createDocker(
 
   return {
     lobbyNetworks,
+    async countLobbyNetworks() {
+      const ids = await docker(
+        [
+          'network',
+          'ls',
+          '--filter',
+          `label=${owner}`,
+          '--filter',
+          `label=${lobbyLabel}`,
+          '--filter',
+          'driver=bridge',
+          '--format',
+          '{{.ID}}',
+        ],
+        800,
+      );
+      return ids ? ids.split('\n').length : 0;
+    },
     async inventory() {
       return (await ownedContainers()).map(({ game }) => game);
     },
@@ -315,6 +336,20 @@ export function createDocker(
       }
       // Pass the secret through the Docker CLI environment to keep it out of its command line.
       const env = agent ? { ...process.env, GAME_STREAM_LAUNCH_TOKEN: agent.token } : undefined;
+      if (telemetryDirectory) {
+        const directory = await prepareSnapshots(telemetryDirectory, game.id).catch(() => {
+          console.error('Could not prepare frame and encoder telemetry for the game.');
+          return undefined;
+        });
+        if (directory) {
+          gameArgs.push(
+            '--mount',
+            `type=bind,"src=${directory.replaceAll('"', '""')}",dst=/run/game-stream-telemetry`,
+            '--env',
+            'GAME_STREAM_TELEMETRY_DIR=/run/game-stream-telemetry',
+          );
+        }
+      }
       try {
         return await docker(
           [
@@ -374,6 +409,7 @@ export function createDocker(
         const container = await inspect(containerName).catch(() => null);
         const recovered = container && own(container);
         if (recovered?.id === game.id) return recovered.dockerId;
+        if (telemetryDirectory) await removeSnapshots(telemetryDirectory, game.id).catch(() => {});
         throw error;
       }
     },
@@ -409,13 +445,15 @@ export function createDocker(
     async remove(dockerId) {
       const container = await inspect(dockerId);
       if (!container) return;
-      if (!own(container)) throw new Error('Docker container does not belong to this runner.');
+      const game = own(container);
+      if (!game) throw new Error('Docker container does not belong to this runner.');
       try {
         if (container.State.Running) await docker(['container', 'stop', dockerId], 30_000);
         await docker(['container', 'rm', dockerId]);
       } catch (error) {
         if (!containerMissing(error)) throw error;
       }
+      if (telemetryDirectory) await removeSnapshots(telemetryDirectory, game.id).catch(() => {});
     },
 
     async ready(dockerId) {

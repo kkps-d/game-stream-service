@@ -1,3 +1,6 @@
+import { startRunnerMetrics } from '../../telemetry/runner.ts';
+import { runtimeDirectory } from '../../telemetry/snapshots.ts';
+import type { DockerGame } from './features/runner/types/docker.ts';
 import { readConfig } from './features/runner/controller/config.ts';
 import { connectRunner } from './features/runner/controller/websocket.ts';
 import { runRunner } from './features/runner/services/connection.ts';
@@ -15,6 +18,8 @@ try {
   const network = await resolveDockerNetwork(config.dockerNetwork, !!config.vps);
   const lobbyStreaming =
     config.lobbyTurn && (await checkLobbyStreaming(network, config.lobbyTurn, config.vps));
+  const snapshots =
+    process.env.GAME_STREAM_TELEMETRY === '1' ? runtimeDirectory(config.runnerId) : undefined;
   const docker = createDocker(
     config.runnerId,
     await resolveGpu(config.gpuPci),
@@ -22,12 +27,33 @@ try {
     config.holocureGameDir,
     config.vps,
     lobbyStreaming,
+    snapshots,
   );
   const lobbies = lobbyStreaming && createRunnerLobbies(docker.lobbyNetworks);
-  const instances = createGameInstances(docker, undefined, lobbies);
+  let games: readonly DockerGame[] | undefined;
+  const instances = createGameInstances(
+    docker,
+    undefined,
+    lobbies,
+    snapshots
+      ? (inventory) => {
+          games = inventory;
+        }
+      : undefined,
+  );
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());
   process.once('SIGTERM', () => shutdown.abort());
+  if (snapshots) {
+    startRunnerMetrics({
+      runnerId: config.runnerId,
+      snapshots,
+      inventory: () => games,
+      readiness: () => instances.snapshot()?.containers,
+      lobbyNetworks: docker.countLobbyNetworks,
+      signal: shutdown.signal,
+    });
+  }
 
   console.log('Game container runner started.');
   const inventory = instances.watch(shutdown.signal);

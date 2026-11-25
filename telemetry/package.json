@@ -1,0 +1,8 @@
+{
+  "name": "game-stream-telemetry",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test ./*.test.ts"
+  }
+}
