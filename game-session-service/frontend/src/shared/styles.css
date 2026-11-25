@@ -12,11 +12,12 @@
   font-display: swap;
 }
 
-.player-library {
+.player-theme {
   --background: #f6efe1;
   --foreground: #1f3029;
   --card: #fcf7ed;
   --border: #c9c5b4;
+  --input: #918e7d;
   --ring: #315d45;
   --primary: #274539;
   --primary-foreground: #fff9ed;
@@ -26,7 +27,7 @@
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
-.player-library h1 {
+.player-theme h1 {
   font-family: 'Instrument Serif', Georgia, serif;
 }
 

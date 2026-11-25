@@ -3,6 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { router } from './router';
 import '@/shared/styles.css';
+import './shared/styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
