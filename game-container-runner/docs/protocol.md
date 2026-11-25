@@ -15,3 +15,11 @@ Docker labels identify the runner, player profile, game, and instance. The runne
 Duplicate Play uses the current instance. A retry after failure creates a new instance with the same save volume. Stop cancels a pending launch or removes the identified container and leaves its volume available for the next Play.
 
 A normal in-game quit returns the game to idle and removes its container while preserving the save volume. A crash reports a failed instance.
+
+## Local LAN lobbies
+
+A runner with lobby networking enabled includes a `lobbies` status in its v4
+snapshot. The service sends `lobby-sync` with the desired lobby IDs and member
+profiles. The runner acknowledges the sync ID after it reconciles its labeled
+bridges and detaches containers whose owners have left. A Play command carries
+a `lobbyId` only when the account has an active membership on that runner.

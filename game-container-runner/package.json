@@ -9,7 +9,7 @@
     "start": "node --env-file-if-exists=.env src/main.ts",
     "dev": "node --env-file-if-exists=.env --watch src/main.ts",
     "check": "tsc --noEmit",
-    "test": "node --test src/features/runner/controller/websocket.test.ts src/features/runner/services/instances.test.ts",
+    "test": "node --test src/features/runner/controller/websocket.test.ts src/features/runner/services/instances.test.ts src/features/runner/services/lobbies.test.ts",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

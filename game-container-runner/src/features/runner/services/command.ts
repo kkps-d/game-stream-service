@@ -1,3 +1,9 @@
+import {
+  lobbyIdPattern,
+  maxLobbies,
+  maxLobbyMembers,
+  type RunnerLobby,
+} from '../../../../../protocol/lobbies.ts';
 import { isIPv4 } from 'node:net';
 import type { RunnerCommand } from '../../../../../protocol/runner.ts';
 
@@ -10,10 +16,40 @@ export function parseCommand(text: string): RunnerCommand | null {
   }
   if (typeof input !== 'object' || input === null || Array.isArray(input)) return null;
 
-  const { version, type, gameId, profileId, instanceId, agent, username } = input as Record<
-    string,
-    unknown
-  >;
+  const {
+    version,
+    type,
+    gameId,
+    profileId,
+    instanceId,
+    agent,
+    username,
+    lobbyId,
+    syncId,
+    lobbies,
+  } = input as Record<string, unknown>;
+  if (version === 4 && type === 'lobby-sync') {
+    if (
+      typeof syncId !== 'string' ||
+      !lobbyIdPattern.test(syncId) ||
+      !Array.isArray(lobbies) ||
+      lobbies.length > maxLobbies ||
+      !lobbies.every(isLobby)
+    )
+      return null;
+    const profiles = lobbies.flatMap(({ profiles }) => profiles);
+    if (
+      new Set(lobbies.map(({ id }) => id)).size !== lobbies.length ||
+      new Set(profiles).size !== profiles.length
+    )
+      return null;
+    return {
+      version,
+      type,
+      syncId,
+      lobbies: lobbies.map(({ id, profiles }) => ({ id, profiles })),
+    };
+  }
   if (
     version !== 4 ||
     typeof gameId !== 'string' ||
@@ -32,6 +68,9 @@ export function parseCommand(text: string): RunnerCommand | null {
   )
     return null;
 
+  if (lobbyId !== undefined && (typeof lobbyId !== 'string' || !lobbyIdPattern.test(lobbyId)))
+    return null;
+
   const play = {
     version,
     type,
@@ -39,6 +78,7 @@ export function parseCommand(text: string): RunnerCommand | null {
     profileId,
     instanceId,
     ...(username && { username }),
+    ...(lobbyId && { lobbyId }),
   } as const;
   if (agent === undefined) return play;
   if (typeof agent !== 'object' || !agent) return null;
@@ -63,4 +103,16 @@ export function parseCommand(text: string): RunnerCommand | null {
   )
     return null;
   return { ...play, agent: { url: endpoint.href, token } };
+}
+
+function isLobby(value: unknown): value is RunnerLobby {
+  if (!value || typeof value !== 'object') return false;
+  const { id, profiles } = value as Record<string, unknown>;
+  return (
+    typeof id === 'string' &&
+    lobbyIdPattern.test(id) &&
+    Array.isArray(profiles) &&
+    profiles.length <= maxLobbyMembers &&
+    profiles.every((profile) => typeof profile === 'string' && /^user-[1-9][0-9]*$/.test(profile))
+  );
 }

@@ -1,3 +1,4 @@
+import type { LobbyService } from '../../lobbies/services/lobbies.ts';
 import express, { type Response } from 'express';
 import { requireUserSession } from '../../auth/controller/auth.ts';
 import type { AgentRegistrations } from '../../agent/services/registrations.ts';
@@ -8,6 +9,8 @@ import type { GameCommandResult } from '../types/action.ts';
 function respond(response: Response, result: GameCommandResult) {
   if (result === 'accepted') {
     response.sendStatus(202);
+  } else if (result === 'lobby-unavailable') {
+    response.status(409).json({ error: 'Wait for your lobby membership to finish updating.' });
   } else if (result === 'not-found') {
     response.status(404).json({ error: 'Game or game instance not found.' });
   } else {
@@ -21,9 +24,10 @@ export function createGamesRouter(
   runners: RunnerRegistry,
   registrations?: AgentRegistrations,
   streaming = false,
+  lobbies?: LobbyService,
 ) {
   const router = express.Router();
-  const games = createGamesService(runners, registrations, streaming);
+  const games = createGamesService(runners, registrations, streaming, lobbies);
 
   router.get('/games', requireUserSession, (request, response) => {
     response.json(games.list(request.user!.id));

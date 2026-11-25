@@ -1,3 +1,8 @@
+import {
+  lobbyIdPattern,
+  maxLobbies,
+  type RunnerLobbyStatus,
+} from '../../../../../protocol/lobbies.ts';
 import type {
   RunnerContainer,
   RunnerGame,
@@ -70,5 +75,24 @@ export function parseSnapshot(text: string): RunnerSnapshot | null {
     return null;
   }
 
-  return { version: 4, type: 'snapshot', games, containers };
+  const lobbies = value.lobbies;
+  if (lobbies !== undefined && !isLobbyStatus(lobbies)) return null;
+  return {
+    version: 4,
+    type: 'snapshot',
+    games,
+    containers,
+    ...(lobbies && { lobbies: { syncId: lobbies.syncId, ready: lobbies.ready } }),
+  };
+}
+
+function isLobbyStatus(lobbies: unknown): lobbies is RunnerLobbyStatus {
+  return (
+    isRecord(lobbies) &&
+    (lobbies.syncId === null ||
+      (typeof lobbies.syncId === 'string' && lobbyIdPattern.test(lobbies.syncId))) &&
+    Array.isArray(lobbies.ready) &&
+    lobbies.ready.length <= maxLobbies &&
+    lobbies.ready.every((id) => typeof id === 'string' && lobbyIdPattern.test(id))
+  );
 }

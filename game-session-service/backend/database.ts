@@ -18,6 +18,7 @@ export function openDatabase(filename: string) {
     if (tableCount !== 2) throw new Error(missingSchemaMessage);
 
     client.pragma('journal_mode = WAL');
+    client.pragma('foreign_keys = ON');
     return {
       db: drizzle({ client }),
       close: () => client.close(),

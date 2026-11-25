@@ -5,6 +5,7 @@ export type GameTarget = Pick<RunnerContainer, 'id' | 'gameId' | 'profileId'>;
 export interface GameLaunch {
   agent?: AgentLaunch;
   username?: string;
+  lobbyId?: string;
 }
 
 export interface DockerGame extends GameTarget {
@@ -17,7 +18,7 @@ export interface DockerGame extends GameTarget {
 export interface GameDocker {
   inventory(): Promise<DockerGame[]>;
   create(game: GameTarget, launch?: GameLaunch): Promise<string>;
-  start(dockerId: string): Promise<void>;
+  start(dockerId: string, launch?: GameLaunch): Promise<void>;
   remove(dockerId: string): Promise<void>;
   ready(dockerId: string): Promise<boolean>;
 }

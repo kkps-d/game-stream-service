@@ -1,22 +1,29 @@
 import { readConfig } from './features/runner/controller/config.ts';
 import { connectRunner } from './features/runner/controller/websocket.ts';
 import { runRunner } from './features/runner/services/connection.ts';
-import { createDocker, resolveDockerNetwork } from './features/runner/services/docker.ts';
+import {
+  checkLobbyStreaming,
+  createDocker,
+  resolveDockerNetwork,
+} from './features/runner/services/docker.ts';
 import { resolveGpu } from './features/runner/services/gpu.ts';
+import { createRunnerLobbies } from './features/runner/services/lobbies.ts';
 import { createGameInstances } from './features/runner/services/instances.ts';
 
 try {
   const config = readConfig(process.env);
   const network = await resolveDockerNetwork(config.dockerNetwork, !!config.vps);
-  const instances = createGameInstances(
-    createDocker(
-      config.runnerId,
-      await resolveGpu(config.gpuPci),
-      network,
-      config.holocureGameDir,
-      config.vps,
-    ),
+  const lobbyStreaming = config.lobbyTurn && (await checkLobbyStreaming(network, config.lobbyTurn));
+  const docker = createDocker(
+    config.runnerId,
+    await resolveGpu(config.gpuPci),
+    network,
+    config.holocureGameDir,
+    config.vps,
+    lobbyStreaming,
   );
+  const lobbies = lobbyStreaming && createRunnerLobbies(docker.lobbyNetworks);
+  const instances = createGameInstances(docker, undefined, lobbies);
   const shutdown = new AbortController();
   process.once('SIGINT', () => shutdown.abort());
   process.once('SIGTERM', () => shutdown.abort());

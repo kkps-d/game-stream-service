@@ -10,6 +10,9 @@ mkdirSync(dirname(databasePath), { recursive: true });
 
 export default defineConfig({
   dialect: 'sqlite',
-  schema: './backend/features/auth/services/schema.ts',
+  schema: [
+    './backend/features/auth/services/schema.ts',
+    './backend/features/lobbies/services/schema.ts',
+  ],
   dbCredentials: { url: databasePath },
 });

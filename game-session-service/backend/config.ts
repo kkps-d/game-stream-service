@@ -62,16 +62,27 @@ export function readConfig() {
     throw new Error('Set AGENT_API_PORT to a valid loopback port.');
   }
 
+  const enableLobbies = process.env.ENABLE_LAN_LOBBIES === '1';
+  const turn = readTurnConfig(process.env.TURN_URL, process.env.TURN_SHARED_SECRET);
+  const runner = readRunnerConfig();
+  if (
+    enableLobbies &&
+    (!agentBindAddress || !turn || !runner || process.env.NODE_ENV === 'production')
+  ) {
+    throw new Error('Local LAN lobbies require a local agent bind address, TURN, and a runner.');
+  }
+
   return {
     sessionSecret,
+    enableLobbies,
     agentPublicOrigin: agentPublicOrigin ?? undefined,
     agentApiPort,
     agentBindAddress,
     viewerDir: process.env.GAME_VIEWER_DIR
       ? resolve(serviceRoot, process.env.GAME_VIEWER_DIR)
       : undefined,
-    turn: readTurnConfig(process.env.TURN_URL, process.env.TURN_SHARED_SECRET),
-    runner: readRunnerConfig(),
+    turn,
+    runner,
     secureCookies: process.env.NODE_ENV === 'production',
     origins: new Set(
       (process.env.APP_ORIGINS || `http://localhost:${playerPort},http://localhost:${adminPort}`)

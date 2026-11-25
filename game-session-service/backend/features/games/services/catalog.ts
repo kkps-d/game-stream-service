@@ -1,3 +1,4 @@
+import type { LobbyService } from '../../lobbies/services/lobbies.ts';
 import { randomUUID } from 'node:crypto';
 import type { PlayerCatalog } from '../../../../../protocol/games.ts';
 import type { AgentRegistrations } from '../../agent/services/registrations.ts';
@@ -8,6 +9,7 @@ export function createGamesService(
   runners: RunnerRegistry,
   registrations?: AgentRegistrations,
   streaming = false,
+  lobbies?: LobbyService,
 ) {
   return {
     list(accountId: number): PlayerCatalog {
@@ -73,6 +75,8 @@ export function createGamesService(
       )
         return 'accepted';
 
+      const lobbyId = lobbies?.launch(accountId);
+      if (lobbyId === null) return 'lobby-unavailable';
       const instanceId = randomUUID();
       const agent = registrations?.issue(instanceId, profileId, gameId);
       if (agent === null) return 'accepted';
@@ -86,6 +90,7 @@ export function createGamesService(
           username: action.username,
         }),
         ...(agent && { agent }),
+        ...(lobbyId && { lobbyId }),
       });
       if (!sent) registrations?.revoke(instanceId);
       return sent ? 'accepted' : 'unavailable';

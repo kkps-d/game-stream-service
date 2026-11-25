@@ -6,6 +6,7 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
   gpuPci: string;
   dockerNetwork?: string;
   holocureGameDir?: string;
+  lobbyTurn?: { ip: string; port: string };
   vps?: { ip: string; origin: string };
 } {
   const url = URL.parse(env.RUNNER_WS_URL ?? '');
@@ -43,5 +44,22 @@ export function readConfig(env: NodeJS.ProcessEnv): RunnerConfig & {
     );
   }
   const vps = vpsIp ? { ip: vpsIp, origin: url.origin } : undefined;
-  return { url, token, runnerId, gpuPci, dockerNetwork, holocureGameDir, vps };
+  const enableLobbies = env.RUNNER_ENABLE_LAN_LOBBIES === '1';
+  const turnIp = env.RUNNER_LOBBY_TURN_IP?.trim() || '172.30.42.2';
+  const turnPort = env.RUNNER_LOBBY_TURN_PORT?.trim() || '3478';
+  if (
+    enableLobbies &&
+    (!loopback ||
+      vps ||
+      !dockerNetwork ||
+      !isIPv4(turnIp) ||
+      !/^[1-9][0-9]{0,4}$/.test(turnPort) ||
+      Number(turnPort) > 65535)
+  ) {
+    throw new Error(
+      'LAN lobbies require a local runner, an internal Docker bridge, and an IPv4 TURN address.',
+    );
+  }
+  const lobbyTurn = enableLobbies ? { ip: turnIp, port: turnPort } : undefined;
+  return { url, token, runnerId, gpuPci, dockerNetwork, holocureGameDir, vps, lobbyTurn };
 }

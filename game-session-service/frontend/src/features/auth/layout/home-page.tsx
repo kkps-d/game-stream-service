@@ -1,18 +1,21 @@
+import { Link } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { Gamepad2 } from 'lucide-react';
 import { SignOutButton } from '@/features/auth/components/sign-out-button';
 import type { SessionUser } from '@/features/auth/hooks/session-api';
 import { panelTitle } from '../../../shared/lib/panel';
 import '../../../shared/styles.css';
-import { GameCatalog } from '../../games/components/game-catalog';
 
 export function HomePage({
   user,
   onSignedOut,
-  onSessionExpired,
+  children,
+  showLobbies,
 }: {
   user: SessionUser;
   onSignedOut: () => Promise<void>;
-  onSessionExpired: () => Promise<void>;
+  children: ReactNode;
+  showLobbies: boolean;
 }) {
   return (
     <div className="player-library min-h-dvh bg-background text-foreground">
@@ -31,10 +34,24 @@ export function HomePage({
         </div>
       </header>
       <main className="mx-auto grid max-w-5xl gap-4 px-4 pt-4 pb-10 sm:gap-5 sm:px-10">
-        <h1 className="text-[clamp(3rem,8vw,5.5rem)] leading-none font-normal tracking-tight">
-          Game library
-        </h1>
-        <GameCatalog key={user.id} onSessionExpired={onSessionExpired} />
+        {showLobbies && (
+          <nav className="flex gap-4 border-b" aria-label="Player panel">
+            <Link
+              to="/"
+              activeOptions={{ exact: true }}
+              className="px-1 pb-2 text-sm [&[aria-current]]:border-b-2 [&[aria-current]]:border-primary"
+            >
+              Games
+            </Link>
+            <Link
+              to="/lobbies"
+              className="px-1 pb-2 text-sm [&[aria-current]]:border-b-2 [&[aria-current]]:border-primary"
+            >
+              Lobbies
+            </Link>
+          </nav>
+        )}
+        {children}
       </main>
     </div>
   );

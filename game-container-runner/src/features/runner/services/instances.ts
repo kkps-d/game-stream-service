@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
+import type { RunnerLobbyManager } from './lobbies.ts';
 import type { RunnerCommand, RunnerContainer } from '../../../../../protocol/runner.ts';
 import type { DockerGame, GameDocker, GameLaunch, GameTarget } from '../types/docker.ts';
 import { gameProfiles } from './games.ts';
@@ -15,7 +16,11 @@ interface Entry {
 const keyFor = ({ profileId, gameId }: Pick<GameTarget, 'profileId' | 'gameId'>) =>
   JSON.stringify([profileId, gameId]);
 
-export function createGameInstances(docker: GameDocker, readinessMs?: number) {
+export function createGameInstances(
+  docker: GameDocker,
+  readinessMs?: number,
+  lobbies?: RunnerLobbyManager,
+) {
   let entries = new Map<string, Entry>();
   const listeners = new Set<() => void>();
   let available = false;
@@ -24,7 +29,8 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
 
   function snapshot() {
     if (!available) return null;
-    return createSnapshot(Array.from(entries.values(), ({ view }) => ({ ...view })));
+    const games = createSnapshot(Array.from(entries.values(), ({ view }) => ({ ...view })));
+    return lobbies ? { ...games, lobbies: lobbies.status() } : games;
   }
 
   function publish() {
@@ -62,8 +68,11 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
         entry.dockerId = undefined;
       }
       if (!isStopping()) {
+        if (launch.lobbyId && !lobbies?.allows(launch.lobbyId, entry.view.profileId)) {
+          throw new Error('Lobby membership changed before launch.');
+        }
         entry.dockerId = await docker.create(entry.view, launch);
-        if (!isStopping()) await docker.start(entry.dockerId);
+        if (!isStopping()) await docker.start(entry.dockerId, launch);
       }
     } catch (error) {
       console.error(`Could not start ${title}.`, error);
@@ -187,6 +196,10 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
     },
 
     dispatch(command: RunnerCommand) {
+      if (command.type === 'lobby-sync') {
+        lobbies?.sync(command, publish);
+        return;
+      }
       if (!available || !gameProfiles.has(command.gameId)) return;
       const key = keyFor(command);
       const current = entries.get(key);
@@ -204,7 +217,8 @@ export function createGameInstances(docker: GameDocker, readinessMs?: number) {
         };
         entries.set(key, entry);
         publish();
-        void start(key, entry, command);
+        if (lobbies) lobbies.run(() => start(key, entry, command));
+        else void start(key, entry, command);
         return;
       }
 

@@ -1,3 +1,6 @@
+import { isIPv4 } from 'node:net';
+import { lobbyIdPattern } from '../../../../../protocol/lobbies.ts';
+import type { LobbyDocker, LobbyNetwork } from './lobbies.ts';
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { access, realpath } from 'node:fs/promises';
@@ -12,11 +15,20 @@ const profileLabel = 'io.game-stream.profile';
 const gameLabel = 'io.game-stream.game';
 const instanceLabel = 'io.game-stream.instance';
 const agentPort = '8080';
+const lobbyLabel = 'io.game-stream.lobby';
+const networkHelper = 'game-stream/lobby-network:dev';
+const readyFile = '/run/game-stream-network/ready';
+const lobbyName = (runnerId: string, lobbyId: string) => `game-stream-${runnerId}-lobby-${lobbyId}`;
+const networkArgs = (network: string, device: string) => [
+  '--network',
+  `name=${network},driver-opt=com.docker.network.endpoint.ifname=${device}`,
+];
 
 interface ContainerInfo {
   Id: string;
   Name: string;
   Config: { Labels: Record<string, string> | null };
+  NetworkSettings: { Networks: Record<string, { NetworkID: string }> | null };
   State: { Status: string; ExitCode: number; StartedAt: string; Running: boolean };
 }
 
@@ -81,7 +93,8 @@ export function createDocker(
   network: string,
   holocureGameDir?: string,
   vps?: { ip: string; origin: string },
-): GameDocker {
+  lobbyStreaming?: { ip: string; port: string; gateway: string },
+): GameDocker & { lobbyNetworks: LobbyDocker } {
   const owner = `${runnerLabel}=${runnerId}`;
   const name = (game: Pick<GameTarget, 'profileId' | 'gameId'>) =>
     `game-stream-${runnerId}-${game.profileId}-${game.gameId}`;
@@ -114,24 +127,114 @@ export function createDocker(
     };
   }
 
-  return {
+  async function ownedContainers() {
+    const ids = await docker([
+      'container',
+      'ls',
+      '--all',
+      '--no-trunc',
+      '--filter',
+      `label=${owner}`,
+      '--format',
+      '{{.ID}}',
+    ]);
+    if (!ids) return [];
+    return (await Promise.all(ids.split('\n').map(inspect))).flatMap((container) => {
+      const game = container && own(container);
+      return game && container ? [{ game, container }] : [];
+    });
+  }
+
+  const lobbyNetworks: LobbyDocker = {
     async inventory() {
       const ids = await docker([
-        'container',
+        'network',
         'ls',
-        '--all',
         '--no-trunc',
         '--filter',
         `label=${owner}`,
+        '--filter',
+        `label=${lobbyLabel}`,
         '--format',
         '{{.ID}}',
       ]);
       if (!ids) return [];
-      const containers = await Promise.all(ids.split('\n').map(inspect));
-      return containers.flatMap((container) => {
-        const game = container && own(container);
-        return game ? [game] : [];
+      const networks = JSON.parse(await docker(['network', 'inspect', ...ids.split('\n')])) as {
+        Id: string;
+        Name: string;
+        Driver: string;
+        Internal: boolean;
+        EnableIPv6: boolean;
+        Labels: Record<string, string>;
+        Options: Record<string, string>;
+      }[];
+      const containers = await ownedContainers();
+      return networks.map((network): LobbyNetwork => {
+        const lobbyId = network.Labels[lobbyLabel];
+        if (
+          !lobbyIdPattern.test(lobbyId) ||
+          network.Labels[runnerLabel] !== runnerId ||
+          network.Name !== lobbyName(runnerId, lobbyId) ||
+          network.Driver !== 'bridge' ||
+          network.Internal ||
+          network.EnableIPv6 ||
+          network.Options['com.docker.network.bridge.inhibit_ipv4'] !== 'true' ||
+          network.Options['com.docker.network.bridge.enable_ip_masquerade'] !== 'false'
+        )
+          throw new Error('Unexpected lobby network configuration.');
+        const profiles = containers.flatMap(({ game, container }) =>
+          container.NetworkSettings.Networks?.[network.Name]
+            ? [{ dockerId: game.dockerId, profileId: game.profileId }]
+            : [],
+        );
+        return { id: network.Id, lobbyId, profiles };
       });
+    },
+
+    async create(lobbyId) {
+      await docker([
+        'network',
+        'create',
+        '--driver',
+        'bridge',
+        // Docker drops same-bridge multicast on internal bridges with bridge netfilter.
+        '--ipv6=false',
+        '--opt',
+        'com.docker.network.bridge.inhibit_ipv4=true',
+        '--opt',
+        'com.docker.network.bridge.enable_ip_masquerade=false',
+        '--label',
+        owner,
+        '--label',
+        `${lobbyLabel}=${lobbyId}`,
+        lobbyName(runnerId, lobbyId),
+      ]);
+    },
+
+    async detach(networkId, dockerId) {
+      try {
+        await docker(['network', 'disconnect', '--force', networkId, dockerId]);
+      } catch (error) {
+        const container = await inspect(dockerId);
+        if (
+          container &&
+          Object.values(container.NetworkSettings.Networks ?? {}).some(
+            ({ NetworkID }) => NetworkID === networkId,
+          )
+        )
+          throw error;
+      }
+    },
+
+    async remove(networkId) {
+      await docker(['network', 'rm', networkId]);
+    },
+  };
+
+  return {
+    lobbyNetworks,
+    async inventory() {
+      return (await ownedContainers()).map(({ game }) => game);
     },
 
     async create(game, launch) {
@@ -172,6 +275,46 @@ export function createDocker(
         // Pin DNS to the firewall's destination while TLS still verifies the hostname.
         gameArgs.push('--add-host', `${endpoint.hostname}:${vps.ip}`, '--dns', '127.0.0.1');
       }
+      const lobbyNetwork =
+        launch?.lobbyId && lobbyStreaming
+          ? await docker([
+              'network',
+              'inspect',
+              '--format',
+              '{{.Id}}',
+              lobbyName(runnerId, launch.lobbyId),
+            ])
+          : undefined;
+      let command: string[] = [];
+      if (lobbyStreaming) {
+        const endpoint = agent && new URL(agent.url);
+        if (
+          !endpoint ||
+          endpoint.protocol !== 'ws:' ||
+          endpoint.hostname !== lobbyStreaming.gateway
+        )
+          throw new Error(
+            'LAN lobbying requires registration on the local streaming bridge gateway.',
+          );
+        const imageCommand: unknown = JSON.parse(
+          await docker(['image', 'inspect', '--format', '{{json .Config.Cmd}}', profile.image]),
+        );
+        if (
+          !Array.isArray(imageCommand) ||
+          !imageCommand.length ||
+          !imageCommand.every((part) => typeof part === 'string')
+        ) {
+          throw new Error('The game image has no default command.');
+        }
+        command = [
+          'sh',
+          '-c',
+          'for attempt in $(seq 1 45); do if [ -f "$1" ]; then shift; exec "$@"; fi; sleep 1; done; exit 1',
+          'network-startup',
+          readyFile,
+          ...imageCommand,
+        ];
+      }
       // Pass the secret through the Docker CLI environment to keep it out of its command line.
       const env = agent ? { ...process.env, GAME_STREAM_LAUNCH_TOKEN: agent.token } : undefined;
       try {
@@ -183,8 +326,22 @@ export function createDocker(
             containerName,
             '--pull',
             'never',
-            '--network',
-            network,
+            ...(lobbyStreaming
+              ? [
+                  ...networkArgs(network, 'stream0'),
+                  ...(lobbyNetwork ? networkArgs(lobbyNetwork, 'lobby0') : []),
+                  '--tmpfs',
+                  '/run/game-stream-network:mode=0755',
+                  '--cap-drop',
+                  'NET_RAW',
+                  '--security-opt',
+                  'no-new-privileges',
+                  '--env',
+                  'ENABLE_SSH=0',
+                  '--dns',
+                  '127.0.0.1',
+                ]
+              : ['--network', network]),
             '--stop-timeout',
             '15',
             '--ulimit',
@@ -209,6 +366,7 @@ export function createDocker(
             `type=volume,src=${containerName}-saves,dst=${profile.savePath}`,
             ...gameArgs,
             profile.image,
+            ...command,
           ],
           30_000,
           env,
@@ -222,8 +380,32 @@ export function createDocker(
       }
     },
 
-    async start(dockerId) {
+    async start(dockerId, launch) {
       await docker(['container', 'start', dockerId], 30_000);
+      if (!lobbyStreaming || !launch?.agent) return;
+      const endpoint = new URL(launch.agent.url);
+      await docker(
+        [
+          'run',
+          '--rm',
+          '--pull',
+          'never',
+          '--network',
+          `container:${dockerId}`,
+          '--cap-drop',
+          'ALL',
+          '--cap-add',
+          'NET_ADMIN',
+          networkHelper,
+          lobbyStreaming.gateway,
+          endpoint.port || '80',
+          lobbyStreaming.ip,
+          lobbyStreaming.port,
+          launch.lobbyId ? '1' : '0',
+        ],
+        20_000,
+      );
+      await docker(['exec', '--user', '0', dockerId, 'touch', readyFile]);
     },
 
     async remove(dockerId) {
@@ -265,4 +447,32 @@ export function createDocker(
       }
     },
   };
+}
+
+export async function checkLobbyStreaming(network: string, turn: { ip: string; port: string }) {
+  await docker(['image', 'inspect', '--format', '{{.Id}}', networkHelper]).catch(() => {
+    throw new Error('Build the local lobby network helper before starting the runner.');
+  });
+  const gateway = await docker([
+    'network',
+    'inspect',
+    '--format',
+    '{{range .IPAM.Config}}{{println .Gateway}}{{end}}',
+    network,
+  ]);
+  if (!isIPv4(gateway) || turn.ip === gateway)
+    throw new Error('Invalid local streaming bridge gateway.');
+  const addresses = await docker([
+    'network',
+    'inspect',
+    '--format',
+    '{{range .Containers}}{{println .IPv4Address}}{{end}}',
+    network,
+  ]);
+  if (!addresses.split('\n').some((address) => address.split('/')[0] === turn.ip)) {
+    throw new Error(
+      'Start local coturn on the configured streaming bridge before starting the runner.',
+    );
+  }
+  return { ...turn, gateway };
 }
