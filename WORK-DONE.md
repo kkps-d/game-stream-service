@@ -26,3 +26,4 @@
 - Passed authenticated login usernames to both Minecraft versions for new saves. Kept the stable account-ID fallback and preserved existing offline names, UUIDs, and volume keys. Verified session and runner tests, both image builds, and isolated launcher smoke tests.
 - Restored the game images’ 720p60 launch defaults while VPS packet loss remains under investigation.
 - Added opt-in LAN lobbies to the player panel. Verified password-protected joining, Minecraft 26.3 LAN discovery and play over a dedicated bridge with local TURN, outsider isolation, continued playback after leaving, host handoff, and empty-lobby cleanup.
+- Deployed LAN lobbies to the VPS. Verified that two Minecraft 26.3 instances streamed over VPS TURN, shared one lobby bridge, and joined the same LAN world.
