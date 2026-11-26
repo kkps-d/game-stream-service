@@ -24,7 +24,7 @@
 - Rebuilt both Minecraft versions and HoloCure with the WSS-capable agent. Verified 720p streams through the public player panel and save retention on Stop. HoloCure now backs up an incomplete Wine prefix before initializing a fresh one.
 - Set runner-launched games to 1080p60. Verified all four Docker launch configurations and decoded 1080p OpenArena video on High through the public viewer.
 - Passed authenticated login usernames to both Minecraft versions for new saves. Kept the stable account-ID fallback and preserved existing offline names, UUIDs, and volume keys. Verified session and runner tests, both image builds, and isolated launcher smoke tests.
-- Restored the game images’ 720p60 launch defaults while VPS packet loss remains under investigation.
+- Restored the game images’ 720p60 launch defaults during the VPS packet-loss investigation.
 - Added opt-in LAN lobbies to the player panel. Verified password-protected joining, Minecraft 26.3 LAN discovery and play over a dedicated bridge with local TURN, outsider isolation, continued playback after leaving, host handoff, and empty-lobby cleanup.
 - Deployed LAN lobbies to the VPS. Verified that two Minecraft 26.3 instances streamed over VPS TURN, shared one lobby bridge, and joined the same LAN world.
 
@@ -33,3 +33,7 @@
 ## Game streaming telemetry
 
 - [x] Deploy the local Grafana and Prometheus stack. Verify host and container metrics, lobby inventory, and frame and stream telemetry. See [Telemetry](telemetry/README.md).
+
+## VPS streaming
+
+- [x] Investigate UDP packet loss on the return path from coturn to the player. The user confirmed that their outbound connection caused the packet loss and freezes. Investigation complete.
