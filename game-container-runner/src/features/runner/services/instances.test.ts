@@ -210,44 +210,44 @@ await test('reports launch and readiness failures and allows a fresh instance on
   assert.deepEqual(removed, ['docker-' + timeout.id]);
 });
 
-await test('advertises the full catalog and keeps game instances separate for one player', async () => {
+await test('advertises the current catalog and keeps game instances separate for one player', async () => {
   const { docker, started, ready } = fakeDocker();
   const create = docker.create;
   docker.create = async (game, launch) => {
-    if (game.gameId === 'minecraft') assert.equal(launch?.username, 'some_player');
+    if (game.gameId === 'minecraft-1-21-11') assert.equal(launch?.username, 'some_player');
     return create(game);
   };
   const runner = createGameInstances(docker);
   await runner.reconcile();
   assert.deepEqual(runner.snapshot()!.games, [
     { id: 'openarena', title: 'OpenArena' },
-    { id: 'minecraft', title: 'Minecraft 26.3' },
     { id: 'minecraft-1-21-11', title: 'Minecraft 1.21.11' },
     { id: 'holocure', title: 'HoloCure' },
   ]);
 
+  runner.dispatch({ ...play(), gameId: 'minecraft' });
   const commands = runner.snapshot()!.games.map(({ id }) => ({ ...play(), gameId: id }));
   for (const command of commands) {
     runner.dispatch(
-      command.gameId === 'minecraft' ? { ...command, username: 'some_player' } : command,
+      command.gameId === 'minecraft-1-21-11' ? { ...command, username: 'some_player' } : command,
     );
   }
   await idle();
   for (const id of started) ready.add(id);
   const recovered = createGameInstances(docker);
   await recovered.reconcile();
-  assert.equal(recovered.snapshot()!.containers.length, 4);
+  assert.equal(recovered.snapshot()!.containers.length, 3);
   assert(recovered.snapshot()!.containers.every(({ state }) => state === 'running'));
 
   const [openArena, minecraft] = commands;
   recovered.dispatch({ ...minecraft, type: 'stop', instanceId: openArena.instanceId });
-  assert.equal(recovered.snapshot()!.containers.length, 4);
+  assert.equal(recovered.snapshot()!.containers.length, 3);
   assert(recovered.snapshot()!.containers.every(({ state }) => state === 'running'));
   recovered.dispatch({ ...minecraft, type: 'stop' });
   await idle();
   assert.deepEqual(
     recovered.snapshot()!.containers.map(({ gameId }) => gameId),
-    ['openarena', 'minecraft-1-21-11', 'holocure'],
+    ['openarena', 'holocure'],
   );
 });
 
@@ -264,9 +264,9 @@ await test('uses Minecraft login names or stable fallbacks with account-keyed sa
 
   const docker = createDocker('local', [], 'none');
   for (const [gameId, profileId, username, expected] of [
-    ['minecraft', 'user-36', 'p_10', 'p_10'],
-    ['minecraft', 'user-36', 'some.player', 'P_10'],
-    ['minecraft', 'user-37', 'some-player', 'P_11'],
+    ['minecraft-1-21-11', 'user-36', 'p_10', 'p_10'],
+    ['minecraft-1-21-11', 'user-36', 'some.player', 'P_10'],
+    ['minecraft-1-21-11', 'user-37', 'some-player', 'P_11'],
     ['minecraft-1-21-11', 'user-36', 'a'.repeat(17), 'P_10'],
     ['minecraft-1-21-11', 'user-36', undefined, 'P_10'],
     ['openarena', 'user-36', 'some_player', undefined],
@@ -283,5 +283,14 @@ await test('uses Minecraft login names or stable fallbacks with account-keyed sa
         arg.startsWith(`type=volume,src=game-stream-local-${profileId}-${gameId}-saves,`),
       ),
     );
+    if (gameId === 'minecraft-1-21-11') {
+      assert.equal(args[args.indexOf('--cpus') + 1], '4');
+      assert.equal(args[args.indexOf('--memory') + 1], '4096m');
+      assert.equal(args[args.indexOf('--memory-swap') + 1], '4096m');
+      assert(args.includes('MINECRAFT_MAX_HEAP_MIB=2048'));
+    } else {
+      assert(!args.includes('--cpus'));
+      assert(!args.includes('--memory'));
+    }
   }
 });

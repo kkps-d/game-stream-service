@@ -28,6 +28,8 @@
 - Added opt-in LAN lobbies to the player panel. Verified password-protected joining, Minecraft 26.3 LAN discovery and play over a dedicated bridge with local TURN, outsider isolation, continued playback after leaving, host handoff, and empty-lobby cleanup.
 - Deployed LAN lobbies to the VPS. Verified that two Minecraft 26.3 instances streamed over VPS TURN, shared one lobby bridge, and joined the same LAN world.
 
+- Unlisted Minecraft 26.3 and capped 1.21.11 at four CPUs and 4 GiB of RAM with a 2 GiB Java heap. Five concurrent sessions on the RTX 5080 averaged 59.6 encoded FPS each while settled and 57.8–58.1 at 720p or 55.4–55.7 at 1080p while generating terrain together. None hit the RAM cap.
+
 ## Game streaming telemetry
 
 - [x] Deploy the local Grafana and Prometheus stack. Verify host and container metrics, lobby inventory, and frame and stream telemetry. See [Telemetry](telemetry/README.md).

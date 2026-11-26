@@ -69,11 +69,11 @@ Create two player accounts and open <http://localhost:5180> in two browser profi
 
 1. In **Lobbies**, create a room with a password. From the second account, find
    it by name or code and join with the password.
-2. In **Games**, both players start Minecraft 26.3 and open their streams.
+2. In **Games**, both players start Minecraft 1.21.11 and open their streams.
    Relaunch any game that was already running before joining.
-3. In the first Minecraft session, open a singleplayer world and set
-   **World Options → Multiplayer → LAN** to **On**. Apply changes. In the
-   second session, join the world from **Multiplayer**.
+3. In the first Minecraft session, open a singleplayer world and
+   start a LAN game with **Open to LAN** → **Start LAN World**. In the second session, join
+   the world from **Multiplayer**.
 4. Leave the lobby from the first account with its stream still open. The other
    player stays in the lobby and can host a new world. When everyone leaves,
    the lobby remains available for five minutes.
@@ -87,7 +87,7 @@ expire before turning the feature off.
 ## Features and known issues
 
 - Username/password sign-in, Drizzle-backed SQLite sessions, and server-side admin access checks.
-- The player panel launches and streams OpenArena, Minecraft 26.3, Minecraft 1.21.11, and HoloCure through the [game container runner](../game-container-runner/README.md).
+- The player panel launches and streams OpenArena, Minecraft 1.21.11, and HoloCure through the [game container runner](../game-container-runner/README.md).
 - Account creation is an operator command.
 
 ## Layout

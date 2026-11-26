@@ -263,6 +263,20 @@ export function createDocker(
       if (!profile) throw new Error(`Unknown game ID: ${game.gameId}`);
 
       const gameArgs: string[] = [];
+      if (profile.resources) {
+        const memory = `${profile.resources.memoryMiB}m`;
+        gameArgs.push(
+          '--cpus',
+          String(profile.resources.cpus),
+          '--memory',
+          memory,
+          '--memory-swap',
+          memory,
+        );
+      }
+      if (profile.javaHeapMiB) {
+        gameArgs.push('--env', `MINECRAFT_MAX_HEAP_MIB=${profile.javaHeapMiB}`);
+      }
       if (profile.offlineName) {
         const username = launch?.username;
         // Account logins are lowercase. The uppercase prefix keeps the ID-based fallback distinct.

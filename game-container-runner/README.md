@@ -23,9 +23,10 @@ Build the images you plan to run in the `containerz` checkout. The runner uses l
 | Game              | Image                          | Save directory                         |
 | ----------------- | ------------------------------ | -------------------------------------- |
 | OpenArena         | `containerz/openarena:dev`     | `/home/player/.openarena`              |
-| Minecraft 26.3    | `containerz/minecraft:26.3`    | `/home/player/.local/share/PineconeMC` |
 | Minecraft 1.21.11 | `containerz/minecraft:1.21.11` | `/home/player/.local/share/PineconeMC` |
 | HoloCure          | `containerz/holocure:dev`      | `/home/player/.wine-holocure`          |
+
+Minecraft 1.21.11 has a four-CPU quota and a 4 GiB RAM limit with swap disabled. The runner sets the maximum Java heap to 2 GiB.
 
 Set `HOLOCURE_GAME_DIR` in the runner's `.env` to the local extracted game directory containing `HoloCure.exe` and `data.win`. The runner mounts it read-only at `/opt/holocure`. [HoloCure setup](https://github.com/kkps-d/containerz/tree/main/images/holocure)
 
@@ -36,7 +37,6 @@ Rebuild the streamer and game images from the updated web-remote-desktop agent. 
 ```sh
 docker build --build-context streamer=../web-remote-desktop/agent -t containerz/streamer:dev images/streamer
 docker build -t containerz/openarena:dev images/openarena
-docker build -t containerz/minecraft:26.3 images/minecraft
 docker build -t containerz/minecraft:1.21.11 --build-arg MINECRAFT_VERSION=1.21.11 images/minecraft
 docker build -t containerz/holocure:dev images/holocure
 npm --prefix ../web-remote-desktop/client ci

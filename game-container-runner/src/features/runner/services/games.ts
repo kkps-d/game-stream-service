@@ -4,6 +4,8 @@ interface GameDefinition {
   savePath: string;
   readinessMs: number;
   offlineName?: true;
+  resources?: { cpus: number; memoryMiB: number };
+  javaHeapMiB?: number;
   gameFilesPath?: string;
 }
 
@@ -18,16 +20,6 @@ export const gameProfiles: ReadonlyMap<string, GameDefinition> = new Map<string,
     },
   ],
   [
-    'minecraft',
-    {
-      title: 'Minecraft 26.3',
-      image: 'containerz/minecraft:26.3',
-      savePath: '/home/player/.local/share/PineconeMC',
-      readinessMs: 60_000,
-      offlineName: true,
-    },
-  ],
-  [
     'minecraft-1-21-11',
     {
       title: 'Minecraft 1.21.11',
@@ -35,6 +27,8 @@ export const gameProfiles: ReadonlyMap<string, GameDefinition> = new Map<string,
       savePath: '/home/player/.local/share/PineconeMC',
       readinessMs: 60_000,
       offlineName: true,
+      resources: { cpus: 4, memoryMiB: 4096 },
+      javaHeapMiB: 2048,
     },
   ],
   [
